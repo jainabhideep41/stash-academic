@@ -13,10 +13,9 @@ import {
   Image as ImageIcon,
   Sparkles,
   User,
-  Plus,
   Layers,
-  Filter,
-  CheckCircle2,
+  LayoutGrid,
+  ListFilter,
 } from "lucide-react";
 
 interface ResourceItem {
@@ -26,7 +25,7 @@ interface ResourceItem {
   fileType: string;
   fileSize: string;
   uploaderName: string;
-  uploaderAvatar?: string;
+  uploaderEmail?: string;
   fileUrl: string;
   createdAt: string;
 }
@@ -35,6 +34,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("All");
   const [selectedContributor, setSelectedContributor] = useState("All");
+  const [viewMode, setViewMode] = useState<"grouped" | "grid">("grouped");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
 
@@ -43,7 +43,9 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   const [uploadCourse, setUploadCourse] = useState("CS 301");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Mock initial items grouped by users for demo & database sync
+  // Dynamic resources list (uses authenticated user data)
+  const activeUserName = currentUser?.name || currentUser?.email?.split("@")[0] || "Student Contributor";
+
   const [resources, setResources] = useState<ResourceItem[]>([
     {
       id: "1",
@@ -51,7 +53,8 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "CS 301",
       fileType: "pdf",
       fileSize: "4.8 MB",
-      uploaderName: currentUser?.name || "Abhideep Jain",
+      uploaderName: activeUserName,
+      uploaderEmail: currentUser?.email,
       fileUrl: "#",
       createdAt: "2 hours ago",
     },
@@ -61,7 +64,8 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "CS 301",
       fileType: "pdf",
       fileSize: "3.1 MB",
-      uploaderName: currentUser?.name || "Abhideep Jain",
+      uploaderName: activeUserName,
+      uploaderEmail: currentUser?.email,
       fileUrl: "#",
       createdAt: "Yesterday",
     },
@@ -71,7 +75,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "CS 305",
       fileType: "docx",
       fileSize: "1.8 MB",
-      uploaderName: "Yash Sharma",
+      uploaderName: "Peer Contributor",
       fileUrl: "#",
       createdAt: "3 hours ago",
     },
@@ -81,7 +85,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "CS 305",
       fileType: "pdf",
       fileSize: "2.6 MB",
-      uploaderName: "Yash Sharma",
+      uploaderName: "Peer Contributor",
       fileUrl: "#",
       createdAt: "1 day ago",
     },
@@ -91,7 +95,8 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "MATH 202",
       fileType: "pdf",
       fileSize: "2.4 MB",
-      uploaderName: currentUser?.name || "Abhideep Jain",
+      uploaderName: activeUserName,
+      uploaderEmail: currentUser?.email,
       fileUrl: "#",
       createdAt: "3 days ago",
     },
@@ -101,25 +106,15 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: "CS 310",
       fileType: "zip",
       fileSize: "12.5 MB",
-      uploaderName: "Yash Sharma",
+      uploaderName: "Peer Contributor",
       fileUrl: "#",
       createdAt: "4 days ago",
-    },
-    {
-      id: "7",
-      title: "Operating Systems Memory Management & Paging Notes.pdf",
-      courseCode: "CS 301",
-      fileType: "pdf",
-      fileSize: "3.9 MB",
-      uploaderName: "Alex Rivera",
-      fileUrl: "#",
-      createdAt: "5 days ago",
     },
   ]);
 
   const courses = ["All", "CS 301", "CS 305", "MATH 202", "CS 310"];
 
-  // Extract unique contributors
+  // Dynamically compute unique contributors from active data
   const contributors = ["All", ...Array.from(new Set(resources.map((r) => r.uploaderName)))];
 
   const handleUploadSubmit = (e: React.FormEvent) => {
@@ -138,7 +133,8 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       courseCode: uploadCourse,
       fileType: fileExt,
       fileSize: fileSizeStr,
-      uploaderName: currentUser?.name || "Abhideep Jain",
+      uploaderName: activeUserName,
+      uploaderEmail: currentUser?.email,
       fileUrl: selectedFile ? URL.createObjectURL(selectedFile) : "#",
       createdAt: "Just now",
     };
@@ -175,7 +171,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
     }
   };
 
-  // Filter resources
+  // Filter resources dynamically
   const filteredResources = resources.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -187,7 +183,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
     return matchesSearch && matchesCourse && matchesContributor;
   });
 
-  // Group filtered resources by uploader name
+  // Group filtered resources dynamically by uploader
   const groupedByUploader: { [uploaderName: string]: ResourceItem[] } = {};
   filteredResources.forEach((item) => {
     if (!groupedByUploader[item.uploaderName]) {
@@ -199,7 +195,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   return (
     <div className="space-y-10">
       
-      {/* Top Banner with Unified Upload Spot */}
+      {/* Top Banner with Unified Single Upload Spot */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-neutral-800 pb-8">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-white text-xs font-mono uppercase tracking-widest mb-3">
@@ -210,21 +206,21 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
             Subject Resources & Contributor Vault
           </h1>
           <p className="text-sm text-neutral-400 mt-1 max-w-2xl">
-            Browse course materials categorized by student contributors (Abhideep Jain, Yash Sharma, etc.) inside each subject.
+            Upload files in one central spot and browse resources categorized dynamically by student contributors inside each subject.
           </p>
         </div>
 
-        {/* Unified Single Upload Spot */}
+        {/* Unified Single Upload Button */}
         <button
           onClick={() => setIsUploadOpen(!isUploadOpen)}
           className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-sm transition shadow-md cursor-pointer"
         >
           <UploadCloud className="w-5 h-5 text-black" />
-          <span>Upload Everything Here</span>
+          <span>Upload File Here</span>
         </button>
       </div>
 
-      {/* Single Unified Upload Form Dropzone Card */}
+      {/* Unified Single Upload Form Card */}
       {isUploadOpen && (
         <form
           onSubmit={handleUploadSubmit}
@@ -234,7 +230,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
             <div className="flex items-center gap-2">
               <UploadCloud className="w-5 h-5 text-white" />
               <h3 className="text-lg font-bold text-white font-display">
-                Single Upload Hub (Attributed to {currentUser?.name || "You"})
+                Upload Hub &bull; Uploading as <span className="underline">{activeUserName}</span>
               </h3>
             </div>
             <button
@@ -319,7 +315,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
         </form>
       )}
 
-      {/* Filter Controls: Subject & Contributor Selection */}
+      {/* Filter Controls: Subject, Contributor, & View Mode Switcher */}
       <div className="space-y-4 bg-neutral-950 border border-neutral-800 p-5 rounded-3xl">
         
         {/* Search Input */}
@@ -327,7 +323,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
           <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by file name, author (Abhideep Jain, Yash Sharma...), or course..."
+            placeholder="Search by file name, uploader name, or course code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-black border border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white"
@@ -335,10 +331,11 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 border-t border-neutral-800/80">
+          
           {/* Subject Filter Pills */}
           <div className="space-y-1">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1">
-              <Layers className="w-3 h-3 text-white" /> Filter by Subject:
+              <Layers className="w-3 h-3 text-white" /> Subject:
             </span>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {courses.map((course) => (
@@ -357,10 +354,10 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
             </div>
           </div>
 
-          {/* Contributor Filter Pills */}
+          {/* Dynamic Contributor Filter Pills */}
           <div className="space-y-1">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1">
-              <User className="w-3 h-3 text-white" /> Filter by Contributor:
+              <User className="w-3 h-3 text-white" /> Contributor:
             </span>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {contributors.map((contrib) => (
@@ -378,12 +375,40 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
               ))}
             </div>
           </div>
+
+          {/* View Mode Toggle */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1">
+              View Layout:
+            </span>
+            <div className="flex items-center gap-1 bg-black p-1 rounded-xl border border-neutral-800">
+              <button
+                onClick={() => setViewMode("grouped")}
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  viewMode === "grouped" ? "bg-white text-black" : "text-neutral-400 hover:text-white"
+                }`}
+                title="Group by Contributor"
+              >
+                <ListFilter className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                  viewMode === "grid" ? "bg-white text-black" : "text-neutral-400 hover:text-white"
+                }`}
+                title="Flat Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
         </div>
 
       </div>
 
-      {/* Categorized View: Grouped by Contributor inside Subjects */}
-      {Object.keys(groupedByUploader).length === 0 ? (
+      {/* Main Display: Grouped by Contributor or Flat Grid */}
+      {filteredResources.length === 0 ? (
         <div className="text-center py-16 bg-neutral-950 border border-neutral-800 rounded-3xl space-y-3">
           <FileText className="w-10 h-10 text-neutral-600 mx-auto" />
           <h3 className="text-base font-bold text-neutral-300">No resources found</h3>
@@ -391,18 +416,18 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
             Try adjusting your subject or contributor filter.
           </p>
         </div>
-      ) : (
+      ) : viewMode === "grouped" ? (
         <div className="space-y-10">
           {Object.entries(groupedByUploader).map(([uploaderName, userResources]) => (
             <div
               key={uploaderName}
               className="bg-neutral-950 border border-neutral-800 rounded-3xl p-6 space-y-5"
             >
-              {/* Contributor Header Badge */}
+              {/* Dynamic Contributor Header */}
               <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-black font-bold text-sm shadow-sm">
-                    {uploaderName.charAt(0)}
+                    {uploaderName.charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-white font-display flex items-center gap-2">
@@ -415,7 +440,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
                 </div>
 
                 <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest border border-neutral-800 px-3 py-1 rounded-full">
-                  Verified Contributor
+                  Student Contributor
                 </span>
               </div>
 
@@ -480,6 +505,74 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Flat Grid View Option */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredResources.map((item) => (
+            <div
+              key={item.id}
+              className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-5 flex flex-col justify-between space-y-4 group transition"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 rounded-xl bg-black border border-neutral-700 shrink-0">
+                    {getFileIcon(item.fileType)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-md bg-neutral-900 text-white border border-neutral-700 text-[10px] font-mono font-bold uppercase tracking-wider">
+                        {item.courseCode}
+                      </span>
+                      <span className="text-[11px] font-mono text-neutral-400">
+                        Uploaded by {item.uploaderName}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-white text-sm leading-snug line-clamp-2">
+                      {item.title}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-neutral-800 text-xs text-neutral-400">
+                <div className="flex items-center gap-3 font-mono text-[11px]">
+                  <span>{item.fileSize}</span>
+                  <span>&bull;</span>
+                  <span>{item.createdAt}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleCopyShareLink(item.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition border border-neutral-700 cursor-pointer"
+                    title="Copy Share Link"
+                  >
+                    {copiedId === item.id ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-white" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="w-3.5 h-3.5 text-white" />
+                        <span>Share</span>
+                      </>
+                    )}
+                  </button>
+
+                  <a
+                    href={item.fileUrl}
+                    download={item.title}
+                    className="p-1.5 rounded-lg bg-white text-black transition hover:bg-neutral-200"
+                    title="Download File"
+                  >
+                    <Download className="w-4 h-4 text-black" />
+                  </a>
+                </div>
               </div>
             </div>
           ))}
