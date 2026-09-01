@@ -32,10 +32,11 @@ export async function sendWelcomeEmail({
 
   const emailHtml = await render(emailComponent);
   const emailText = `
-Welcome to Stash Academic Vault, ${name}!
+Stash ✳︎ Academic Vault
+Welcome, ${name}!
 
 Your academic profile has been successfully verified.
-Here are your verified university credentials:
+Here are your university credentials:
 
 Student UID: ${uidNumber}
 Branch: ${branch}
@@ -51,11 +52,11 @@ Security ID: ${uidNumber}
 
   const antiSpamHeaders = {
     "X-Entity-Ref-ID": `stash-${uidNumber}-${Date.now()}`,
-    "Feedback-ID": `onboarding:stash-academic:user-${uidNumber}`,
+    "Feedback-ID": `onboarding:stash:user-${uidNumber}`,
     "List-Unsubscribe": `<mailto:notifications@stash-academic.vercel.app?subject=unsubscribe>`,
   };
 
-  // 1. Resend API
+  // 1. Resend API (Sender name explicitly displayed as "Stash")
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
@@ -65,16 +66,19 @@ Security ID: ${uidNumber}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Stash Academic <onboarding@resend.dev>",
+          from: "Stash <onboarding@resend.dev>",
           to: [email],
-          subject: "🎉 Welcome to Stash Academic Vault - Registration Confirmed",
+          subject: `Stash ✳︎ Registration Confirmed - Welcome, ${name}!`,
           html: emailHtml,
           text: emailText,
           headers: antiSpamHeaders,
         }),
       });
       if (res.ok) {
-        return { success: true, message: `Email delivered to ${email} via Resend.` };
+        return { success: true, message: `Email delivered to ${email} via Resend from Stash.` };
+      } else {
+        const errJson = await res.json();
+        console.warn("Resend API response error:", errJson);
       }
     } catch (err) {
       console.warn("Resend email delivery failed, falling back to SMTP:", err);
@@ -93,26 +97,26 @@ Security ID: ${uidNumber}
       });
 
       await transporter.sendMail({
-        from: `"Stash Academic" <${process.env.EMAIL_SERVER_USER}>`,
+        from: `"Stash" <${process.env.EMAIL_SERVER_USER}>`,
         to: email,
-        subject: "🎉 Welcome to Stash Academic Vault - Registration Confirmed",
+        subject: `Stash ✳︎ Registration Confirmed - Welcome, ${name}!`,
         html: emailHtml,
         text: emailText,
         headers: antiSpamHeaders,
       });
 
-      return { success: true, message: `Email delivered to ${email} via SMTP.` };
+      return { success: true, message: `Email delivered to ${email} via SMTP from Stash.` };
     } catch (smtpErr) {
       console.warn("SMTP email delivery failed:", smtpErr);
     }
   }
 
   // 3. Fallback audit log
-  console.log(`[STASH EMAIL COMPILED WITH ZERO-SPAM PROTOCOL] Destination: ${email}`);
+  console.log(`[STASH EMAIL DISPATCH SIMULATION] From: "Stash" -> To: ${email}`);
   console.log(`[STASH PROFILE DETAILS] Name: ${name}, UID: ${uidNumber}, Branch: ${branch}, Year: ${yearOfStudy}`);
 
   return {
     success: true,
-    message: `Confirmation email rendered and recorded for ${email}.`,
+    message: `Confirmation email rendered for ${email}.`,
   };
 }
