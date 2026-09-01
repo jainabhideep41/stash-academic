@@ -251,6 +251,42 @@ export function AssessmentStudioClient({
     }
   };
 
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const HEADING_PRESETS = [
+    "#Dashboard:",
+    "#AddStudent:",
+    "#EditStudent:",
+    "#StudentList:",
+    "#OutputView:",
+    "#TerminalExecution:",
+    "#TestResults:",
+  ];
+
+  const handlePasteImage = (id: string, e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          handleOutputImageUpload(id, file);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleDropImage = (id: string, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverId(null);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      handleOutputImageUpload(id, file);
+    }
+  };
+
   // Add Output Image Slot
   const handleAddOutput = () => {
     setOutputItems([
@@ -643,10 +679,38 @@ export function AssessmentStudioClient({
 
                 <div className="space-y-3">
                   {outputItems.map((item, idx) => (
-                    <div key={item.id} className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-2.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-xs font-mono text-slate-500">#{idx + 1}</span>
+                    <div
+                      key={item.id}
+                      onPaste={(e) => handlePasteImage(item.id, e)}
+                      tabIndex={0}
+                      className="p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3 focus:border-rose-500/50 focus:outline-none transition"
+                    >
+                      {/* Heading Row: Dropdown selector + Editable Custom Input + Delete */}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-[260px]">
+                          <span className="text-xs font-mono text-slate-500 font-bold">#{idx + 1}</span>
+
+                          {/* Heading Dropdown */}
+                          <select
+                            value={HEADING_PRESETS.includes(item.heading) ? item.heading : "custom"}
+                            onChange={(e) => {
+                              if (e.target.value !== "custom") {
+                                setOutputItems((prev) =>
+                                  prev.map((o) => (o.id === item.id ? { ...o, heading: e.target.value } : o))
+                                );
+                              }
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-white/15 text-white text-xs font-mono font-bold focus:border-white focus:outline-none cursor-pointer"
+                          >
+                            <option value="custom">Select Heading...</option>
+                            {HEADING_PRESETS.map((preset) => (
+                              <option key={preset} value={preset}>
+                                {preset}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Heading Text Input */}
                           <input
                             type="text"
                             value={item.heading}
@@ -655,10 +719,11 @@ export function AssessmentStudioClient({
                                 prev.map((o) => (o.id === item.id ? { ...o, heading: e.target.value } : o))
                               )
                             }
-                            placeholder="Heading e.g. #Dashboard: or #AddStudent:"
-                            className="w-full px-3 py-1.5 rounded-lg bg-black border border-white/15 text-white text-xs font-mono font-bold focus:border-white focus:outline-none"
+                            placeholder="Heading e.g. #Dashboard:"
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-black border border-white/15 text-white text-xs font-mono font-bold focus:border-white focus:outline-none"
                           />
                         </div>
+
                         {outputItems.length > 1 && (
                           <button
                             type="button"
@@ -670,26 +735,63 @@ export function AssessmentStudioClient({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-mono cursor-pointer transition">
-                          <ImageIcon className="w-3.5 h-3.5" />
-                          <span>{item.imageFile ? item.imageFile.name : "Choose Screenshot"}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) handleOutputImageUpload(item.id, f);
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-                        {item.previewUrl && (
-                          <img
-                            src={item.previewUrl}
-                            alt="Output preview"
-                            className="h-10 w-16 object-cover rounded-lg border border-white/20"
-                          />
+                      {/* Interactive Drag & Drop / Browse / Clipboard Paste Zone */}
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOverId(item.id);
+                        }}
+                        onDragLeave={() => setDragOverId(null)}
+                        onDrop={(e) => handleDropImage(item.id, e)}
+                        className={`border-2 border-dashed rounded-xl p-4 transition text-center relative group cursor-pointer ${
+                          dragOverId === item.id
+                            ? "border-rose-400 bg-rose-500/10"
+                            : "border-white/15 hover:border-white/30 bg-neutral-950/60"
+                        }`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleOutputImageUpload(item.id, f);
+                          }}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        />
+
+                        {item.previewUrl ? (
+                          <div className="flex items-center justify-between gap-4 pointer-events-none">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={item.previewUrl}
+                                alt="Output preview"
+                                className="h-16 w-24 object-cover rounded-lg border border-white/20 shadow-md"
+                              />
+                              <div className="text-left">
+                                <span className="text-xs font-mono font-bold text-white block truncate max-w-[220px]">
+                                  {item.imageFile?.name || "Pasted Screenshot"}
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Image Loaded & Ready
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-mono text-slate-400 group-hover:text-white underline">
+                              Change / Replace
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 pointer-events-none py-2">
+                            <div className="flex items-center justify-center gap-2 text-slate-300 group-hover:text-white">
+                              <UploadCloud className="w-5 h-5 text-rose-400" />
+                              <span className="text-xs font-bold text-white">
+                                Drag & Drop, Click to browse, or simply Paste (Ctrl + V)
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-mono text-slate-500">
+                              Directly paste with Ctrl + V after taking a screenshot
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
