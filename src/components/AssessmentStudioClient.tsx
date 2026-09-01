@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import JSZip from "jszip";
 import { generateFsdDocx, CodeFileItem, OutputItem } from "@/lib/docxGenerator";
+import { generateAssessmentObjectivesAndOutcomes } from "@/app/actions/generateAssessmentAi";
 import {
   Code2,
   Globe,
@@ -21,6 +23,7 @@ import {
   FileCode,
   Loader2,
   ArrowRight,
+  Key,
 } from "lucide-react";
 
 interface AssessmentStudioClientProps {
@@ -158,6 +161,42 @@ export function AssessmentStudioClient({
   ]);
 
   const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleGenerateAiObjectives = async () => {
+    if (!aimEasy.trim() && !aimMedium.trim() && !aimHard.trim()) {
+      alert("Please enter your Aim (Easy, Medium, or Hard) first so Gemini can analyze the requirements!");
+      return;
+    }
+
+    const apiKey = localStorage.getItem("stash_gemini_api_key") || "";
+    setIsAiGenerating(true);
+    setAiError(null);
+
+    try {
+      const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
+      const res = await generateAssessmentObjectivesAndOutcomes({
+        aimEasy,
+        aimMedium,
+        aimHard,
+        courseTitle: activeCourse?.title || "Full Stack Development - II",
+        codeSnippet: firstCodeFile?.rawContent,
+        apiKey,
+      });
+
+      if (res.success && res.objectives && res.learningOutcomes) {
+        setObjectives(res.objectives);
+        setLearningOutcomes(res.learningOutcomes);
+      } else {
+        setAiError(res.error || "Failed to generate AI pointers.");
+      }
+    } catch (err: any) {
+      setAiError(err.message || "Failed to contact Gemini API.");
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
 
   // Handle Zip Upload
   const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -633,12 +672,37 @@ export function AssessmentStudioClient({
 
               {/* 5. Objectives & Learning Outcomes (AI Generated Pointers) */}
               <div className="space-y-3 pt-3 border-t border-white/10">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
                     5. Objectives & Learning Outcomes (AI Generated Pointers)
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400">Times New Roman 12pt</span>
+                  
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiObjectives}
+                    disabled={isAiGenerating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 text-xs font-mono font-bold transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isAiGenerating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                    )}
+                    <span>{isAiGenerating ? "Synthesizing with Gemini..." : "✨ Generate with Gemini AI"}</span>
+                  </button>
                 </div>
+
+                {aiError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center justify-between gap-2">
+                    <span>{aiError}</span>
+                    <Link
+                      href="/profile"
+                      className="text-white underline font-bold hover:text-purple-300 shrink-0"
+                    >
+                      Add Key in Profile &rarr;
+                    </Link>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="space-y-1.5 bg-black/40 p-3 rounded-2xl border border-white/10">

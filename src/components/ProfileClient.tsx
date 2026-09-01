@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { completeRegistration } from "@/app/actions/register";
 import {
   User,
@@ -15,7 +15,11 @@ import {
   Check,
   Building2,
   ShieldCheck,
+  Key,
+  Eye,
+  EyeOff,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 
 interface ProfileClientProps {
@@ -53,10 +57,28 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
   const [yearOfStudy, setYearOfStudy] = useState(studentDetails.yearOfStudy);
   const [uidNumber, setUidNumber] = useState(studentDetails.uidNumber);
   
+  // Gemini API Key State
+  const [geminiKey, setGeminiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copiedUid, setCopiedUid] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("stash_gemini_api_key");
+    if (saved) setGeminiKey(saved);
+  }, []);
+
+  const handleSaveApiKey = () => {
+    localStorage.setItem("stash_gemini_api_key", geminiKey.trim());
+    // Also save in cookie for server actions
+    document.cookie = `stash_gemini_key=${encodeURIComponent(geminiKey.trim())}; path=/; max-age=31536000; SameSite=Lax`;
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2500);
+  };
 
   const handleCopyUid = () => {
     navigator.clipboard.writeText(uidNumber);
@@ -99,7 +121,7 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
           Student Profile
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Manage your verified academic credentials, university enrollment, and account settings.
+          Manage your verified academic credentials, university enrollment, and AI settings.
         </p>
       </div>
 
@@ -213,6 +235,8 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
 
         {/* Detailed Form & Settings */}
         <div className="lg:col-span-2 space-y-6">
+          
+          {/* 1. Academic Credentials Box */}
           <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
@@ -233,7 +257,6 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
             {isEditing ? (
               /* Editable Form */
               <form onSubmit={handleUpdate} className="space-y-5">
-                {/* Name */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
                     Full Name
@@ -247,7 +270,6 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                   />
                 </div>
 
-                {/* Email (Readonly) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
                     University / SSO Email (Locked)
@@ -260,7 +282,6 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                   />
                 </div>
 
-                {/* Branch */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
                     Course / Branch
@@ -279,7 +300,6 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                   </select>
                 </div>
 
-                {/* Year of Study */}
                 <div className="space-y-2">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
                     Year of Study
@@ -302,7 +322,6 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                   </div>
                 </div>
 
-                {/* UID */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
                     Student UID / Roll Number
@@ -312,7 +331,7 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                     value={uidNumber}
                     onChange={(e) => setUidNumber(e.target.value)}
                     required
-                    placeholder="e.g. 23CS01049"
+                    placeholder="e.g. 24BCS10694"
                     className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-white transition"
                   />
                 </div>
@@ -367,24 +386,77 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
                     <span className="text-sm font-bold text-cyan-300 block">Year {yearOfStudy}</span>
                   </div>
                 </div>
-
-                {/* Additional University Vault Metadata */}
-                <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/10 space-y-2">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                    Cloud Vault Storage Allocation
-                  </span>
-                  <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden border border-white/10">
-                    <div className="bg-gradient-to-r from-purple-500 to-rose-500 h-2 rounded-full w-1/4" />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
-                    <span>1.2 GB used of 15 GB</span>
-                    <span className="text-emerald-400">Normal Usage</span>
-                  </div>
-                </div>
               </div>
             )}
-
           </div>
+
+          {/* 2. Google Gemini AI API Configuration Card */}
+          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-purple-500/20">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-display">
+                    Google Gemini AI Key
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Powers live AI Objectives & Learning Outcomes generation in Assessment Studio.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-mono text-purple-400 hover:text-purple-300 font-bold hover:underline"
+              >
+                <span>Get Free Key</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Google AI Studio API Key (Gemini)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showKey ? "text" : "password"}
+                    value={geminiKey}
+                    onChange={(e) => setGeminiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full px-4 py-3 pr-12 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition p-1"
+                  >
+                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-mono">
+                  Your key is saved locally to your device and used exclusively for your assessment synthesis.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveApiKey}
+                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  {keySaved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4 text-black" />}
+                  <span>{keySaved ? "API Key Saved!" : "Save Gemini Key"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>
