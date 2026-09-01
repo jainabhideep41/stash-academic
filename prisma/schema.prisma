@@ -40,6 +40,10 @@ model User {
   email         String?    @unique
   emailVerified DateTime?
   image         String?
+  branch        String?
+  yearOfStudy   String?
+  uidNumber     String?
+  isRegistered  Boolean    @default(false)
   accounts      Account[]
   sessions      Session[]
   notes         Note[]

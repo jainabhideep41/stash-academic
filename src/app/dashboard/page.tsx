@@ -2,6 +2,7 @@ import React from "react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { AppLayoutShell } from "@/components/AppLayoutShell";
+import { prisma } from "@/lib/prisma";
 import {
   FolderArchive,
   BookOpen,
@@ -13,6 +14,8 @@ import {
   CheckCircle2,
   Share2,
   Plus,
+  CreditCard,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -25,17 +28,48 @@ export default async function DashboardPage() {
 
   const user = session.user;
 
+  // Fetch student profile details from DB if available
+  let dbUser = null;
+  if (user.email && process.env.DATABASE_URL) {
+    try {
+      dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
+    } catch (e) {
+      console.warn("DB user fetch fallback:", e);
+    }
+  }
+
+  const branch = dbUser?.branch || "Computer Science & Engineering";
+  const yearOfStudy = dbUser?.yearOfStudy || "III";
+  const uidNumber = dbUser?.uidNumber || "23CS01049";
+
   return (
     <AppLayoutShell user={user}>
       <div className="space-y-8">
         
-        {/* Welcome Header */}
-        <div className="bg-neutral-950 border border-neutral-800 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="space-y-1">
+        {/* Welcome Header with Verified Academic Badges */}
+        <div className="fused-card border-prismatic rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Verified Student
+              </span>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+                <CreditCard className="w-3 h-3" />
+                UID: {uidNumber}
+              </span>
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold">
+                <GraduationCap className="w-3 h-3" />
+                Year {yearOfStudy} &bull; {branch}
+              </span>
+            </div>
+
             <h1 className="text-2xl sm:text-3xl font-black text-white font-display">
               Welcome back, {user.name || "Student"}!
             </h1>
-            <p className="text-sm text-neutral-400">
+            <p className="text-sm text-slate-400">
               Here is an overview of your course files, study notes, and upcoming academic deadlines.
             </p>
           </div>
@@ -43,14 +77,14 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/vault"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs transition shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-md cursor-pointer"
             >
               <UploadCloud className="w-4 h-4 text-black" />
               Upload File
             </Link>
             <Link
               href="/notes"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs transition"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-white/10 text-white font-bold text-xs transition cursor-pointer"
             >
               <Plus className="w-4 h-4 text-white" />
               Create Note
@@ -62,47 +96,47 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link
             href="/vault"
-            className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-5 transition group"
+            className="fused-card rounded-2xl p-5 transition group"
           >
-            <div className="flex items-center justify-between text-neutral-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
               <span>File Vault</span>
               <FolderArchive className="w-4 h-4 text-white group-hover:scale-105 transition" />
             </div>
             <div className="text-2xl font-black text-white">12 Files</div>
-            <p className="text-[11px] text-neutral-400 mt-1">Open file repository &rarr;</p>
+            <p className="text-[11px] text-slate-400 mt-1">Open file repository &rarr;</p>
           </Link>
 
           <Link
             href="/notes"
-            className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-5 transition group"
+            className="fused-card rounded-2xl p-5 transition group"
           >
-            <div className="flex items-center justify-between text-neutral-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
               <span>Saved Notes</span>
               <FileText className="w-4 h-4 text-white group-hover:scale-105 transition" />
             </div>
             <div className="text-2xl font-black text-white">24 Notes</div>
-            <p className="text-[11px] text-neutral-400 mt-1">Open notes hub &rarr;</p>
+            <p className="text-[11px] text-slate-400 mt-1">Open notes hub &rarr;</p>
           </Link>
 
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-neutral-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+          <div className="fused-card rounded-2xl p-5">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
               <span>Deadlines</span>
               <Calendar className="w-4 h-4 text-white" />
             </div>
             <div className="text-2xl font-black text-white">3 Tasks</div>
-            <p className="text-[11px] text-neutral-400 mt-1 flex items-center gap-1 font-mono">
+            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
               <Clock className="w-3 h-3 text-white" /> Next in 2 days
             </p>
           </div>
 
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-neutral-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
+          <div className="fused-card rounded-2xl p-5">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-mono font-bold uppercase tracking-wider mb-2">
               <span>Active Shares</span>
               <Share2 className="w-4 h-4 text-white" />
             </div>
             <div className="text-2xl font-black text-white">18 Links</div>
-            <p className="text-[11px] text-white mt-1 flex items-center gap-1 font-mono">
-              <CheckCircle2 className="w-3 h-3 text-white" /> Public Links Active
+            <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-mono">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Public Links Active
             </p>
           </div>
         </div>
@@ -131,23 +165,23 @@ export default async function DashboardPage() {
               ].map((course, idx) => (
                 <div
                   key={idx}
-                  className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-5 space-y-3 group transition"
+                  className="fused-card rounded-2xl p-5 space-y-3 group transition"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-md bg-black text-white border border-neutral-700 text-[10px] font-mono font-bold uppercase">
+                    <span className="px-2.5 py-0.5 rounded-md bg-white/10 text-white border border-white/10 text-[10px] font-mono font-bold uppercase">
                       {course.code}
                     </span>
-                    <span className="text-xs font-mono text-neutral-400">{course.files}</span>
+                    <span className="text-xs font-mono text-slate-400">{course.files}</span>
                   </div>
 
                   <div>
                     <h3 className="font-bold text-white text-sm leading-snug">
                       {course.title}
                     </h3>
-                    <p className="text-xs text-neutral-400 mt-1 line-clamp-1">{course.topics}</p>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-1">{course.topics}</p>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between border-t border-neutral-800">
+                  <div className="pt-2 flex items-center justify-between border-t border-white/10">
                     <Link
                       href={`/vault?course=${encodeURIComponent(course.code)}`}
                       className="text-xs font-mono font-bold text-white hover:underline flex items-center gap-1"
@@ -168,23 +202,23 @@ export default async function DashboardPage() {
               Academic Tasks & Deadlines
             </h2>
 
-            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-5 space-y-4">
-              <div className="border-l-2 border-white pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-white uppercase tracking-widest">Due in 2 days</span>
+            <div className="fused-card rounded-2xl p-5 space-y-4">
+              <div className="border-l-2 border-purple-500 pl-3 py-1">
+                <span className="text-[10px] font-mono font-bold text-purple-400 uppercase tracking-widest">Due in 2 days</span>
                 <h4 className="text-sm font-bold text-white">Algorithms Homework 4</h4>
-                <p className="text-xs text-neutral-400">CS 301 &bull; Dynamic Programming</p>
+                <p className="text-xs text-slate-400">CS 301 &bull; Dynamic Programming</p>
               </div>
 
-              <div className="border-l-2 border-neutral-500 pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-widest">Due Friday</span>
+              <div className="border-l-2 border-cyan-500 pl-3 py-1">
+                <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">Due Friday</span>
                 <h4 className="text-sm font-bold text-white">Database Project Phase 2</h4>
-                <p className="text-xs text-neutral-400">CS 305 &bull; Schema ER Diagrams</p>
+                <p className="text-xs text-slate-400">CS 305 &bull; Schema ER Diagrams</p>
               </div>
 
-              <div className="border-l-2 border-neutral-500 pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-widest">Next Week</span>
+              <div className="border-l-2 border-rose-500 pl-3 py-1">
+                <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-widest">Next Week</span>
                 <h4 className="text-sm font-bold text-white">Midterm Exam Revision</h4>
-                <p className="text-xs text-neutral-400">MATH 202 &bull; Linear Algebra</p>
+                <p className="text-xs text-slate-400">MATH 202 &bull; Linear Algebra</p>
               </div>
             </div>
           </div>
