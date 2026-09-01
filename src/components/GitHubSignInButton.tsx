@@ -13,7 +13,7 @@ interface GitHubSignInButtonProps {
 export function GitHubSignInButton({
   className = "",
   buttonText = "Continue with GitHub",
-  callbackUrl = "/onboarding",
+  callbackUrl = "/dashboard",
 }: GitHubSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 

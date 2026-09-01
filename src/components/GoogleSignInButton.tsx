@@ -13,7 +13,7 @@ interface GoogleSignInButtonProps {
 export function GoogleSignInButton({
   className = "",
   buttonText = "Continue with Google",
-  callbackUrl = "/onboarding",
+  callbackUrl = "/dashboard",
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 
