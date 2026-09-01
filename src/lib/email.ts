@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 export interface WelcomeEmailPayload {
   email: string;
   name: string;
@@ -76,7 +78,7 @@ export async function sendWelcomeEmail({
 </html>
   `.trim();
 
-  // 1. If Resend API Key is available
+  // 1. Resend API
   if (process.env.RESEND_API_KEY) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
@@ -96,16 +98,40 @@ export async function sendWelcomeEmail({
         return { success: true, message: `Email delivered to ${email} via Resend.` };
       }
     } catch (err) {
-      console.warn("Resend email delivery failed, falling back:", err);
+      console.warn("Resend email delivery failed, falling back to SMTP:", err);
     }
   }
 
-  // 2. Fallback / Dev logger (guarantees zero crash and full audit trail)
-  console.log(`[STASH REGISTRATION EMAIL DISPATCH] Sent to: ${email}`);
-  console.log(`[STASH REGISTRATION DETAILS] Name: ${name}, UID: ${uidNumber}, Branch: ${branch}, Year: ${yearOfStudy}`);
+  // 2. SMTP / Nodemailer (e.g. Gmail / SendGrid / Amazon SES)
+  if (process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: process.env.EMAIL_SERVER_SERVICE || "gmail",
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"Stash Academic" <${process.env.EMAIL_SERVER_USER}>`,
+        to: email,
+        subject: "🎉 Welcome to Stash Academic Vault - Registration Confirmed",
+        html: emailHtml,
+      });
+
+      return { success: true, message: `Email delivered to ${email} via SMTP.` };
+    } catch (smtpErr) {
+      console.warn("SMTP email delivery failed:", smtpErr);
+    }
+  }
+
+  // 3. Fallback audit log
+  console.log(`[STASH EMAIL SIMULATED DISPATCH] Destination: ${email}`);
+  console.log(`[STASH PROFILE DETAILS] Name: ${name}, UID: ${uidNumber}, Branch: ${branch}, Year: ${yearOfStudy}`);
 
   return {
     success: true,
-    message: `Confirmation email queued and delivered for ${email}!`,
+    message: `Confirmation email rendered and recorded for ${email}.`,
   };
 }
