@@ -3,6 +3,8 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GitHubSignInButton } from "@/components/GitHubSignInButton";
 import { UserAccountNav } from "@/components/UserAccountNav";
 import { AppleKeynoteShowcase } from "@/components/AppleKeynoteShowcase";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 import {
   FolderArchive,
   CheckCircle2,
@@ -15,9 +17,35 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export default async function HomePage() {
   const session = await auth();
+
+  // If user is authenticated, check if they completed profile registration
+  if (session?.user) {
+    const cookieStore = await cookies();
+    const isRegisteredCookie = cookieStore.get("stash_registered")?.value === "true";
+
+    let dbUser = null;
+    if (session.user.email && process.env.DATABASE_URL) {
+      try {
+        dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+        });
+      } catch (e) {
+        console.warn("DB check fallback on home:", e);
+      }
+    }
+
+    const isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
+
+    if (!isRegistered) {
+      redirect("/onboarding");
+    } else {
+      redirect("/dashboard");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#02040a] text-[#f5f5f7] flex flex-col justify-between selection:bg-white selection:text-black relative overflow-x-hidden">
@@ -54,16 +82,12 @@ export default async function HomePage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            {session?.user ? (
-              <UserAccountNav />
-            ) : (
-              <a
-                href="#signin-card"
-                className="px-5 py-2 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 shadow-md"
-              >
-                Sign In
-              </a>
-            )}
+            <a
+              href="#signin-card"
+              className="px-5 py-2 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 shadow-md"
+            >
+              Sign In
+            </a>
           </div>
         </div>
       </header>
@@ -128,50 +152,20 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {session?.user ? (
-              <div className="space-y-4 py-4 bg-slate-950/80 rounded-2xl p-6 border border-white/10">
-                <div className="flex justify-center">
-                  {session.user.image ? (
-                    <img
-                      src={session.user.image}
-                      alt="Profile"
-                      className="w-16 h-16 rounded-full border-2 border-purple-500 shadow-md object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-xl font-bold text-black">
-                      {session.user.name?.charAt(0) || "S"}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">
-                    Welcome back, {session.user.name}!
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">{session.user.email}</p>
-                </div>
-                <Link
-                  href="/dashboard"
-                  className="block w-full text-center py-3.5 px-4 rounded-full bg-white text-black font-semibold text-sm transition hover:bg-slate-200 shadow-md"
-                >
-                  Open Dashboard &rarr;
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3 pt-2">
-                <GoogleSignInButton buttonText="Continue with Google" />
-                <GitHubSignInButton buttonText="Continue with GitHub" />
+            <div className="space-y-3 pt-2">
+              <GoogleSignInButton buttonText="Continue with Google" />
+              <GitHubSignInButton buttonText="Continue with GitHub" />
 
-                <div className="pt-4 border-t border-white/10 text-left">
-                  <div className="flex items-center gap-2 text-xs text-slate-300 font-semibold mb-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    Zero password friction
-                  </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Uses official OAuth 2.0 single sign-on. Your university credentials and GitHub profile remain fully private.
-                  </p>
+              <div className="pt-4 border-t border-white/10 text-left">
+                <div className="flex items-center gap-2 text-xs text-slate-300 font-semibold mb-1">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  Zero password friction
                 </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Uses official OAuth 2.0 single sign-on. Your university credentials and GitHub profile remain fully private.
+                </p>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
