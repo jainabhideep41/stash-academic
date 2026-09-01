@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Stash ✳︎ Academic Vault & Student Knowledge Hub",
-  description: "Next-generation academic vault for course materials, Markdown notes, LaTeX equations, syllabus tracking, and cloud file sharing.",
+  title: "Stash ✳︎ Academic Vault",
+  description: "Minimalist, high-performance academic vault for course materials, Markdown notes, LaTeX equations, and cloud file sharing.",
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased bg-[#07090e] text-slate-100 min-h-screen selection:bg-indigo-500 selection:text-white font-sans">
+      <body className="antialiased bg-black text-white min-h-screen selection:bg-white selection:text-black font-sans">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -10,7 +10,6 @@ import {
   BookOpen,
   Sparkles,
   Edit3,
-  Trash2,
 } from "lucide-react";
 
 interface NoteItem {
@@ -91,25 +90,25 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
   return (
     <div className="space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-white text-xs font-mono uppercase tracking-widest mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
             Instant Academic Note Creation & Sharing
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-3xl font-black text-white tracking-tight font-display">
             Academic Notes & Summaries
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-neutral-400 mt-1">
             Capture clean Markdown lecture notes and generate instant shareable links for classmates.
           </p>
         </div>
 
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition shadow-lg shadow-purple-600/25 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-sm transition shadow-sm cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 text-black" />
           <span>New Note</span>
         </button>
       </div>
@@ -118,17 +117,17 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
       {isCreating && (
         <form
           onSubmit={handleCreateNote}
-          className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 space-y-4 shadow-2xl animate-in fade-in duration-200"
+          className="bg-neutral-950 border border-neutral-700 rounded-3xl p-6 space-y-4 shadow-2xl animate-in fade-in duration-200"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Edit3 className="w-5 h-5 text-purple-400" />
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 font-display">
+              <Edit3 className="w-5 h-5 text-white" />
               Create Academic Note
             </h3>
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="text-xs text-slate-400 hover:text-white"
+              className="text-xs text-neutral-400 hover:text-white"
             >
               Cancel
             </button>
@@ -136,22 +135,22 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Title</label>
+              <label className="block text-xs font-mono font-bold uppercase text-neutral-300 mb-1">Title</label>
               <input
                 type="text"
                 placeholder="e.g. Dynamic Programming Optimization Techniques"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full bg-slate-955 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-black border border-neutral-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Course</label>
+              <label className="block text-xs font-mono font-bold uppercase text-neutral-300 mb-1">Course</label>
               <select
                 value={newCourse}
                 onChange={(e) => setNewCourse(e.target.value)}
-                className="w-full bg-slate-955 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-black border border-neutral-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white"
               >
                 <option value="CS 301">CS 301</option>
                 <option value="CS 305">CS 305</option>
@@ -162,7 +161,7 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-mono font-bold uppercase text-neutral-300 mb-1">
               Content (Markdown & Notes)
             </label>
             <textarea
@@ -170,7 +169,7 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
               placeholder="Write lecture notes, key formulas, or summary bullet points..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              className="w-full bg-slate-955 border border-slate-800 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+              className="w-full bg-black border border-neutral-800 rounded-xl p-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white font-mono"
               required
             />
           </div>
@@ -179,13 +178,13 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-400 hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/30"
+              className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs shadow-md"
             >
               Save Note
             </button>
@@ -195,13 +194,13 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
 
       {/* Search Input */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
           placeholder="Search notes content or title..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full bg-black border border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white"
         />
       </div>
 
@@ -210,43 +209,43 @@ export function NotesClient({ currentUser }: { currentUser: any }) {
         {filteredNotes.map((note) => (
           <div
             key={note.id}
-            className="bg-slate-900/80 border border-slate-800 hover:border-purple-500/40 rounded-2xl p-6 flex flex-col justify-between space-y-4 transition hover:shadow-xl group"
+            className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-6 flex flex-col justify-between space-y-4 transition group"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="px-2.5 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 rounded-md bg-neutral-900 text-white border border-neutral-700 text-[10px] font-mono font-bold uppercase tracking-wider">
                   {note.courseCode}
                 </span>
-                <span className="text-xs text-slate-500">{note.createdAt}</span>
+                <span className="text-xs text-neutral-500 font-mono">{note.createdAt}</span>
               </div>
 
-              <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition">
+              <h3 className="text-base font-bold text-white">
                 {note.title}
               </h3>
 
-              <p className="text-xs text-slate-300 leading-relaxed font-normal bg-slate-950/60 p-3 rounded-xl border border-slate-800/60 whitespace-pre-wrap">
+              <p className="text-xs text-neutral-300 leading-relaxed font-normal bg-black p-3.5 rounded-xl border border-neutral-800 whitespace-pre-wrap font-mono">
                 {note.content}
               </p>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+            <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+              <span className="text-xs text-neutral-400 flex items-center gap-1.5 font-mono">
+                <BookOpen className="w-3.5 h-3.5 text-white" />
                 Public Note
               </span>
 
               <button
                 onClick={() => handleCopyShareLink(note.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition border border-neutral-700 cursor-pointer"
               >
                 {copiedId === note.id ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">Copied!</span>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>Copied!</span>
                   </>
                 ) : (
                   <>
-                    <Share2 className="w-3.5 h-3.5 text-purple-400" />
+                    <Share2 className="w-3.5 h-3.5 text-white" />
                     <span>Share Note</span>
                   </>
                 )}

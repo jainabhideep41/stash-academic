@@ -9,10 +9,8 @@ import {
   Download,
   Check,
   FileCode,
-  FileSpreadsheet,
   FileArchive,
   Image as ImageIcon,
-  Plus,
   Sparkles,
 } from "lucide-react";
 
@@ -31,9 +29,7 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("All");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
-  // Mock initial items for smooth demo (connected to Supabase/Prisma)
   const [resources, setResources] = useState<ResourceItem[]>([
     {
       id: "1",
@@ -89,19 +85,19 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   const getFileIcon = (fileType: string) => {
     switch (fileType.toLowerCase()) {
       case "pdf":
-        return <FileText className="w-6 h-6 text-rose-400" />;
+        return <FileText className="w-6 h-6 text-white" />;
       case "docx":
       case "doc":
-        return <FileText className="w-6 h-6 text-blue-400" />;
+        return <FileText className="w-6 h-6 text-white" />;
       case "zip":
       case "rar":
-        return <FileArchive className="w-6 h-6 text-amber-400" />;
+        return <FileArchive className="w-6 h-6 text-white" />;
       case "png":
       case "jpg":
       case "jpeg":
-        return <ImageIcon className="w-6 h-6 text-emerald-400" />;
+        return <ImageIcon className="w-6 h-6 text-white" />;
       default:
-        return <FileCode className="w-6 h-6 text-indigo-400" />;
+        return <FileCode className="w-6 h-6 text-white" />;
     }
   };
 
@@ -116,23 +112,23 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
   return (
     <div className="space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-white text-xs font-mono uppercase tracking-widest mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
             Fast Academic Storage & File Sharing
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-3xl font-black text-white tracking-tight font-display">
             Academic File Vault
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-neutral-400 mt-1">
             Store, preview, and instantly share course slides, question papers, and lab manuals.
           </p>
         </div>
 
         {/* Upload Action Button */}
-        <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition shadow-lg shadow-indigo-600/25">
-          <UploadCloud className="w-4 h-4" />
+        <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-sm transition shadow-sm">
+          <UploadCloud className="w-4 h-4 text-black" />
           <span>Upload File</span>
           <input
             type="file"
@@ -161,13 +157,13 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Search Bar */}
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search files or courses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-black border border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-white"
           />
         </div>
 
@@ -177,10 +173,10 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
             <button
               key={course}
               onClick={() => setSelectedCourse(course)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition cursor-pointer ${
                 selectedCourse === course
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  ? "bg-white text-black"
+                  : "bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800"
               }`}
             >
               {course}
@@ -191,10 +187,10 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
 
       {/* Resource Files Grid */}
       {filteredResources.length === 0 ? (
-        <div className="text-center py-16 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-3">
-          <FileText className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-semibold text-slate-300">No files found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+        <div className="text-center py-16 bg-neutral-950 border border-neutral-800 rounded-3xl space-y-3">
+          <FileText className="w-10 h-10 text-neutral-600 mx-auto" />
+          <h3 className="text-base font-bold text-neutral-300">No files found</h3>
+          <p className="text-xs text-neutral-500 max-w-sm mx-auto">
             Try adjusting your search query or upload a new course resource.
           </p>
         </div>
@@ -203,26 +199,26 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
           {filteredResources.map((item) => (
             <div
               key={item.id}
-              className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between space-y-4 group transition hover:shadow-xl"
+              className="bg-neutral-950 border border-neutral-800 hover:border-white rounded-2xl p-5 flex flex-col justify-between space-y-4 group transition"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 shrink-0">
+                  <div className="p-3 rounded-xl bg-black border border-neutral-700 shrink-0">
                     {getFileIcon(item.fileType)}
                   </div>
                   <div>
-                    <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <span className="inline-block px-2.5 py-0.5 rounded-md bg-neutral-900 text-white border border-neutral-700 text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
                       {item.courseCode}
                     </span>
-                    <h3 className="font-semibold text-white text-sm leading-snug line-clamp-2 group-hover:text-indigo-300 transition">
+                    <h3 className="font-bold text-white text-sm leading-snug line-clamp-2">
                       {item.title}
                     </h3>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs text-slate-400">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between pt-3 border-t border-neutral-800 text-xs text-neutral-400">
+                <div className="flex items-center gap-3 font-mono text-[11px]">
                   <span>{item.fileSize}</span>
                   <span>&bull;</span>
                   <span>{item.createdAt}</span>
@@ -231,17 +227,17 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleCopyShareLink(item.id, item.title)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition border border-neutral-700 cursor-pointer"
                     title="Copy Share Link"
                   >
                     {copiedId === item.id ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">Link Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-white" />
+                        <span>Copied!</span>
                       </>
                     ) : (
                       <>
-                        <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+                        <Share2 className="w-3.5 h-3.5 text-white" />
                         <span>Share</span>
                       </>
                     )}
@@ -250,10 +246,10 @@ export function FileVaultClient({ currentUser }: { currentUser: any }) {
                   <a
                     href={item.fileUrl}
                     download={item.title}
-                    className="p-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 transition"
+                    className="p-1.5 rounded-lg bg-white text-black transition hover:bg-neutral-200"
                     title="Download File"
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-4 h-4 text-black" />
                   </a>
                 </div>
               </div>
