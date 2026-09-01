@@ -17,6 +17,7 @@ import {
   Plus,
   CreditCard,
   GraduationCap,
+  UserCircle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,22 +59,34 @@ export default async function DashboardPage() {
     <AppLayoutShell user={user}>
       <div className="space-y-8">
         
-        {/* Welcome Header with Verified Academic Badges */}
+        {/* Welcome Header with Verified Academic Badges & Direct Profile Access */}
         <div className="fused-card border-prismatic rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider">
+              <Link
+                href="/profile"
+                title="View & Edit Profile"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider hover:bg-emerald-500/20 transition cursor-pointer"
+              >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Verified Student
-              </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+              </Link>
+              <Link
+                href="/profile"
+                title="View & Edit Profile"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold hover:bg-purple-500/20 transition cursor-pointer"
+              >
                 <CreditCard className="w-3 h-3" />
                 UID: {uidNumber}
-              </span>
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold">
+              </Link>
+              <Link
+                href="/profile"
+                title="View & Edit Profile"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-500/20 transition cursor-pointer"
+              >
                 <GraduationCap className="w-3 h-3" />
                 Year {yearOfStudy} &bull; {branch}
-              </span>
+              </Link>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-white font-display">
@@ -84,7 +97,14 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-white/10 text-white font-bold text-xs transition cursor-pointer"
+            >
+              <UserCircle className="w-4 h-4 text-purple-400" />
+              Student Profile
+            </Link>
             <Link
               href="/vault"
               className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-md cursor-pointer"

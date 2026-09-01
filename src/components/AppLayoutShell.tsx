@@ -10,12 +10,11 @@ import {
   FileText,
   UploadCloud,
   LogOut,
-  Search,
-  BookOpen,
   Plus,
   Menu,
   X,
   ChevronRight,
+  UserCircle,
 } from "lucide-react";
 
 interface AppLayoutShellProps {
@@ -47,12 +46,18 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
       href: "/notes",
       icon: FileText,
     },
+    {
+      name: "My Profile",
+      href: "/profile",
+      icon: UserCircle,
+    },
   ];
 
   const getPageTitle = () => {
     if (pathname === "/dashboard") return "Dashboard";
     if (pathname === "/vault") return "File Vault & Sharing";
     if (pathname === "/notes") return "Notes & Study Guides";
+    if (pathname === "/profile") return "Student Profile & Credentials";
     return "Workspace";
   };
 
@@ -69,12 +74,21 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             STASH
           </span>
         </Link>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 text-neutral-400 hover:text-white"
-        >
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/profile" className="p-1.5 rounded-lg bg-neutral-900 border border-neutral-800">
+            {user.image ? (
+              <img src={user.image} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+            ) : (
+              <UserCircle className="w-6 h-6 text-slate-300" />
+            )}
+          </Link>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-neutral-400 hover:text-white"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
@@ -137,15 +151,19 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
           </nav>
         </div>
 
-        {/* User Account Footer Block */}
+        {/* User Account Footer Block with Direct Profile Link */}
         <div className="border-t border-neutral-800 pt-4 space-y-3">
           <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3 overflow-hidden">
+            <Link
+              href="/profile"
+              title="View & Edit Profile"
+              className="flex items-center gap-3 overflow-hidden group hover:opacity-80 transition cursor-pointer"
+            >
               {user.image ? (
                 <img
                   src={user.image}
                   alt={user.name || "Student"}
-                  className="w-8 h-8 rounded-full border border-neutral-700 object-cover shrink-0"
+                  className="w-8 h-8 rounded-full border border-neutral-700 object-cover shrink-0 group-hover:border-purple-500 transition"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-xs font-bold text-black shrink-0">
@@ -153,10 +171,12 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
                 </div>
               )}
               <div className="overflow-hidden text-left">
-                <h4 className="text-xs font-bold text-white truncate">{user.name || "Student"}</h4>
-                <p className="text-[10px] text-neutral-500 font-mono truncate">{user.email}</p>
+                <h4 className="text-xs font-bold text-white truncate group-hover:text-purple-300 transition">
+                  {user.name || "Student"}
+                </h4>
+                <p className="text-[10px] text-neutral-500 font-mono truncate">View Profile &rarr;</p>
               </div>
-            </div>
+            </Link>
 
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
@@ -187,6 +207,27 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Note</span>
+            </Link>
+
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 pl-3 border-l border-neutral-800 hover:opacity-80 transition"
+              title="My Student Profile"
+            >
+              {user.image ? (
+                <img
+                  src={user.image}
+                  alt={user.name || "Profile"}
+                  className="w-7 h-7 rounded-full border border-neutral-700 object-cover"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-white text-black font-bold text-xs flex items-center justify-center">
+                  {user.name?.charAt(0) || "S"}
+                </div>
+              )}
+              <span className="text-xs font-bold text-slate-300 hidden xl:inline">
+                {user.name || "Profile"}
+              </span>
             </Link>
           </div>
         </header>
