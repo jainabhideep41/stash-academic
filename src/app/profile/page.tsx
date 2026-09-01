@@ -44,9 +44,19 @@ export default async function ProfilePage() {
     uidNumber: dbUser?.uidNumber || emailProfile?.uidNumber || "23CS01049",
   };
 
+  const initialGeminiKey =
+    dbUser?.geminiApiKey ||
+    (emailKey ? cookieStore.get(`stash_gemini_${emailKey}`)?.value : "") ||
+    cookieStore.get("stash_gemini_key")?.value ||
+    "";
+
   return (
     <AppLayoutShell user={user}>
-      <ProfileClient initialUser={user} studentDetails={studentDetails} />
+      <ProfileClient
+        initialUser={user}
+        studentDetails={studentDetails}
+        initialGeminiKey={initialGeminiKey}
+      />
     </AppLayoutShell>
   );
 }

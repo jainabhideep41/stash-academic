@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { completeRegistration } from "@/app/actions/register";
+import { completeRegistration, saveUserGeminiApiKey } from "@/app/actions/register";
 import {
   User,
   CreditCard,
@@ -33,6 +33,7 @@ interface ProfileClientProps {
     yearOfStudy: string;
     uidNumber: string;
   };
+  initialGeminiKey?: string;
 }
 
 const BRANCH_OPTIONS = [
@@ -51,14 +52,14 @@ const BRANCH_OPTIONS = [
 
 const YEAR_OPTIONS = ["I", "II", "III", "IV", "V"];
 
-export function ProfileClient({ initialUser, studentDetails }: ProfileClientProps) {
+export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = "" }: ProfileClientProps) {
   const [name, setName] = useState(initialUser.name || "");
   const [branch, setBranch] = useState(studentDetails.branch);
   const [yearOfStudy, setYearOfStudy] = useState(studentDetails.yearOfStudy);
   const [uidNumber, setUidNumber] = useState(studentDetails.uidNumber);
   
   // Gemini API Key State
-  const [geminiKey, setGeminiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState(initialGeminiKey);
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
 
@@ -68,14 +69,24 @@ export function ProfileClient({ initialUser, studentDetails }: ProfileClientProp
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("stash_gemini_api_key");
-    if (saved) setGeminiKey(saved);
-  }, []);
+    if (!geminiKey) {
+      const saved = localStorage.getItem("stash_gemini_api_key");
+      if (saved) setGeminiKey(saved);
+    }
+  }, [geminiKey]);
 
-  const handleSaveApiKey = () => {
+  const handleSaveApiKey = async () => {
     localStorage.setItem("stash_gemini_api_key", geminiKey.trim());
     // Also save in cookie for server actions
     document.cookie = `stash_gemini_key=${encodeURIComponent(geminiKey.trim())}; path=/; max-age=31536000; SameSite=Lax`;
+    
+    // Save to Database / Account server action
+    try {
+      await saveUserGeminiApiKey(geminiKey.trim());
+    } catch (e) {
+      console.warn("DB save warning:", e);
+    }
+
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 2500);
   };

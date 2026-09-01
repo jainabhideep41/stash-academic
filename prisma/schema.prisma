@@ -43,6 +43,7 @@ model User {
   branch        String?
   yearOfStudy   String?
   uidNumber     String?
+  geminiApiKey  String?
   isRegistered  Boolean    @default(false)
   accounts      Account[]
   sessions      Session[]

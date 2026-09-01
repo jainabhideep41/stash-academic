@@ -100,3 +100,50 @@ export async function completeRegistration(formData: RegisterFormData) {
     return { success: false, error: err.message || "Failed to complete registration." };
   }
 }
+
+export async function saveUserGeminiApiKey(apiKey: string) {
+  const session = await auth();
+
+  if (!session?.user?.email) {
+    return { success: false, error: "Unauthorized. Please sign in." };
+  }
+
+  const normalizedEmail = session.user.email.toLowerCase().trim();
+  const cleanedKey = apiKey.trim();
+
+  try {
+    // 1. Save to Database if configured
+    if (process.env.DATABASE_URL) {
+      try {
+        await prisma.user.upsert({
+          where: { email: normalizedEmail },
+          update: { geminiApiKey: cleanedKey },
+          create: {
+            email: normalizedEmail,
+            name: session.user.name,
+            geminiApiKey: cleanedKey,
+          },
+        });
+      } catch (dbErr) {
+        console.warn("DB update error for geminiApiKey:", dbErr);
+      }
+    }
+
+    // 2. Set persistent account cookie keyed to this email
+    const emailKey = Buffer.from(normalizedEmail).toString("hex");
+    const cookieStore = await cookies();
+    cookieStore.set(`stash_gemini_${emailKey}`, cleanedKey, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    return { success: true, message: "Gemini API key saved to your account in database!" };
+  } catch (err: any) {
+    console.error("Save Gemini Key error:", err);
+    return { success: false, error: err.message || "Failed to save API key." };
+  }
+}
+
