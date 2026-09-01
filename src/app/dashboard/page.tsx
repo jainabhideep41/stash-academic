@@ -1,6 +1,7 @@
 import React from "react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { AppLayoutShell } from "@/components/AppLayoutShell";
 import { prisma } from "@/lib/prisma";
 import {
@@ -28,7 +29,10 @@ export default async function DashboardPage() {
 
   const user = session.user;
 
-  // Fetch student profile details from DB if available
+  // Enforce registration for everyone (old & new users)
+  const cookieStore = await cookies();
+  const isRegisteredCookie = cookieStore.get("stash_registered")?.value === "true";
+
   let dbUser = null;
   if (user.email && process.env.DATABASE_URL) {
     try {
@@ -38,6 +42,12 @@ export default async function DashboardPage() {
     } catch (e) {
       console.warn("DB user fetch fallback:", e);
     }
+  }
+
+  const isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
+
+  if (!isRegistered) {
+    redirect("/onboarding");
   }
 
   const branch = dbUser?.branch || "Computer Science & Engineering";

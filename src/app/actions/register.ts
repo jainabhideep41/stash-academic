@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
+import { cookies } from "next/headers";
 
 export interface RegisterFormData {
   name: string;
@@ -52,7 +53,17 @@ export async function completeRegistration(formData: RegisterFormData) {
       }
     }
 
-    // 2. Dispatch Welcome Email Notification
+    // 2. Set permanent registration cookie so the user is unlocked
+    const cookieStore = await cookies();
+    cookieStore.set("stash_registered", "true", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    // 3. Dispatch Welcome Email Notification
     await sendWelcomeEmail({
       email: session.user.email,
       name,
