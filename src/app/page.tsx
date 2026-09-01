@@ -11,18 +11,16 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
-  ChevronRight,
-  Layers,
-  Zap,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 
 export default async function HomePage() {
   const session = await auth();
 
-  // If user is authenticated, check if they completed profile registration
+  // Check registration status if user is signed in
+  let isRegistered = false;
   if (session?.user) {
     const cookieStore = await cookies();
     const isRegisteredCookie = cookieStore.get("stash_registered")?.value === "true";
@@ -38,13 +36,7 @@ export default async function HomePage() {
       }
     }
 
-    const isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
-
-    if (!isRegistered) {
-      redirect("/onboarding");
-    } else {
-      redirect("/dashboard");
-    }
+    isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
   }
 
   return (
@@ -82,12 +74,24 @@ export default async function HomePage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <a
-              href="#signin-card"
-              className="px-5 py-2 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 shadow-md"
-            >
-              Sign In
-            </a>
+            {session?.user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href={isRegistered ? "/dashboard" : "/onboarding"}
+                  className="px-4 py-1.5 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 shadow-md"
+                >
+                  {isRegistered ? "Open Dashboard" : "Complete Registration"}
+                </Link>
+                <UserAccountNav />
+              </div>
+            ) : (
+              <a
+                href="#signin-card"
+                className="px-5 py-2 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 shadow-md"
+              >
+                Sign In
+              </a>
+            )}
           </div>
         </div>
       </header>
@@ -145,27 +149,74 @@ export default async function HomePage() {
 
             <div className="space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-display">
-                Access Your Workspace
+                {session?.user ? "Your Authenticated Account" : "Access Your Workspace"}
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-                Sign in with your Google or GitHub account to sync your files and study materials across all devices.
+                {session?.user
+                  ? "Manage your verified student profile and access your course vaults."
+                  : "Sign in with your Google or GitHub account to sync your files and study materials across all devices."}
               </p>
             </div>
 
-            <div className="space-y-3 pt-2">
-              <GoogleSignInButton buttonText="Continue with Google" />
-              <GitHubSignInButton buttonText="Continue with GitHub" />
-
-              <div className="pt-4 border-t border-white/10 text-left">
-                <div className="flex items-center gap-2 text-xs text-slate-300 font-semibold mb-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  Zero password friction
+            {session?.user ? (
+              <div className="space-y-4 py-4 bg-slate-950/80 rounded-2xl p-6 border border-white/10">
+                <div className="flex justify-center">
+                  {session.user.image ? (
+                    <img
+                      src={session.user.image}
+                      alt="Profile"
+                      className="w-16 h-16 rounded-full border-2 border-purple-500 shadow-md object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-xl font-bold text-black">
+                      {session.user.name?.charAt(0) || "S"}
+                    </div>
+                  )}
                 </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Uses official OAuth 2.0 single sign-on. Your university credentials and GitHub profile remain fully private.
-                </p>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Welcome, {session.user.name}!
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">{session.user.email}</p>
+                </div>
+
+                {isRegistered ? (
+                  <Link
+                    href="/dashboard"
+                    className="block w-full text-center py-3.5 px-4 rounded-full bg-white text-black font-semibold text-sm transition hover:bg-slate-200 shadow-md"
+                  >
+                    Open Student Dashboard &rarr;
+                  </Link>
+                ) : (
+                  <div className="space-y-2">
+                    <Link
+                      href="/onboarding"
+                      className="block w-full text-center py-3.5 px-4 rounded-full bg-gradient-to-r from-purple-500 to-rose-500 text-white font-bold text-sm transition hover:opacity-90 shadow-lg shadow-purple-500/20"
+                    >
+                      Complete Registration (Branch, Year, UID) &rarr;
+                    </Link>
+                    <p className="text-[11px] text-amber-400/90 font-mono">
+                      * Profile verification required before accessing course files
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                <GoogleSignInButton buttonText="Continue with Google" />
+                <GitHubSignInButton buttonText="Continue with GitHub" />
+
+                <div className="pt-4 border-t border-white/10 text-left">
+                  <div className="flex items-center gap-2 text-xs text-slate-300 font-semibold mb-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    Zero password friction
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Uses official OAuth 2.0 single sign-on. Your university credentials and GitHub profile remain fully private.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
