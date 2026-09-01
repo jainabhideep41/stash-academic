@@ -289,7 +289,34 @@ export function AssessmentStudioClient({
     setIsGeneratingDocx(true);
 
     try {
-      // Prepare clean code files without comments
+      // 1. Run live Google Gemini AI synthesis for Objectives & Outcomes if possible
+      let finalObjectives = objectives;
+      let finalLearningOutcomes = learningOutcomes;
+
+      const apiKey = localStorage.getItem("stash_gemini_api_key") || "";
+      const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
+
+      try {
+        const aiRes = await generateAssessmentObjectivesAndOutcomes({
+          aimEasy,
+          aimMedium,
+          aimHard,
+          courseTitle: activeCourse?.title || "Full Stack Development - II",
+          codeSnippet: firstCodeFile?.rawContent,
+          apiKey,
+        });
+
+        if (aiRes.success && aiRes.objectives && aiRes.learningOutcomes) {
+          finalObjectives = aiRes.objectives;
+          finalLearningOutcomes = aiRes.learningOutcomes;
+          setObjectives(aiRes.objectives);
+          setLearningOutcomes(aiRes.learningOutcomes);
+        }
+      } catch (aiErr) {
+        console.warn("AI generation fallback to standard curriculum pointers:", aiErr);
+      }
+
+      // 2. Prepare clean code files without comments
       const chosenFiles: CodeFileItem[] = unzippedFiles
         .filter((f) => selectedFilePaths.includes(f.path))
         .map((f) => ({
@@ -325,10 +352,10 @@ export function AssessmentStudioClient({
         aimEasy,
         aimMedium,
         aimHard,
-        objectives,
+        objectives: finalObjectives,
         codeFiles: chosenFiles,
         outputItems: finalOutputs,
-        learningOutcomes,
+        learningOutcomes: finalLearningOutcomes,
       });
 
       // Trigger automatic browser download

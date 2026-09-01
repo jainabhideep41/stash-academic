@@ -1,6 +1,8 @@
 "use server";
 
 import { auth } from "@/auth";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export interface GenerateAiParams {
   aimEasy: string;
@@ -13,10 +15,28 @@ export interface GenerateAiParams {
 
 export async function generateAssessmentObjectivesAndOutcomes(params: GenerateAiParams) {
   const session = await auth();
+  const normalizedEmail = session?.user?.email?.toLowerCase().trim() || "";
+  const emailKey = normalizedEmail ? Buffer.from(normalizedEmail).toString("hex") : "";
 
-  const apiKey = params.apiKey || process.env.GEMINI_API_KEY;
+  const cookieStore = await cookies();
+  const cookieKey =
+    (emailKey ? cookieStore.get(`stash_gemini_${emailKey}`)?.value : "") ||
+    cookieStore.get("stash_gemini_key")?.value ||
+    "";
 
-  if (!apiKey || apiKey.trim() === "") {
+  let dbKey = "";
+  if (normalizedEmail && process.env.DATABASE_URL) {
+    try {
+      const u = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (u?.geminiApiKey) dbKey = u.geminiApiKey;
+    } catch (e) {
+      console.warn("DB key fetch fallback:", e);
+    }
+  }
+
+  const apiKey = params.apiKey?.trim() || cookieKey?.trim() || dbKey?.trim() || process.env.GEMINI_API_KEY?.trim();
+
+  if (!apiKey) {
     return {
       success: false,
       error: "No Gemini API key found. Please add your free Google AI Studio API key in your Profile settings.",
@@ -31,10 +51,10 @@ Course: ${params.courseTitle}
 Aim (Easy): ${params.aimEasy}
 Aim (Medium): ${params.aimMedium}
 Aim (Hard): ${params.aimHard}
-${params.codeSnippet ? `Key Code Sample:\n${params.codeSnippet.slice(0, 500)}` : ""}
+${params.codeSnippet ? `Key Code Sample:\n${params.codeSnippet.slice(0, 600)}` : ""}
 
 Generate EXACTLY:
-1. "OBJECTIVES": Exactly 6 concise institutional academic objective pointers. Each pointer MUST start with "To understand...", "To implement...", "To create...", "To learn...", etc.
+1. "OBJECTIVES": Exactly 6 concise institutional academic objective pointers tailored directly to this experiment. Each pointer MUST start with "To understand...", "To implement...", "To create...", "To learn...", etc.
 2. "LEARNING OUTCOMES": Exactly 6 concise institutional learning outcome pointers. Each pointer MUST start with an active past/present verb like "Implement...", "Create...", "Develop...", "Apply...", "Analyze...", "Integrate...".
 
 Respond STRICTLY in this JSON format without markdown code fences:
@@ -66,7 +86,7 @@ Respond STRICTLY in this JSON format without markdown code fences:
     for (const model of modelsToTry) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
