@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.5.4",
@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/node": "26.4.0",
     "@types/react": "19.2.18",
+    "prisma": "^5.22.0",
     "typescript": "7.0.2",
     "vercel": "^59.10.0"
   }
