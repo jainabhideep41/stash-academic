@@ -29,31 +29,44 @@ export default async function DashboardPage() {
   }
 
   const user = session.user;
+  const normalizedEmail = user.email ? user.email.toLowerCase().trim() : "";
+  const emailKey = normalizedEmail ? Buffer.from(normalizedEmail).toString("hex") : "";
 
-  // Enforce registration for everyone (old & new users)
+  // Check email-specific registration (unifies Google & GitHub for same email)
   const cookieStore = await cookies();
   const isRegisteredCookie = cookieStore.get("stash_registered")?.value === "true";
+  const emailProfileRaw = emailKey ? cookieStore.get(`stash_reg_${emailKey}`)?.value : null;
+  
+  let emailProfile: any = null;
+  if (emailProfileRaw) {
+    try {
+      emailProfile = JSON.parse(emailProfileRaw);
+    } catch {}
+  }
 
   let dbUser = null;
-  if (user.email && process.env.DATABASE_URL) {
+  if (normalizedEmail && process.env.DATABASE_URL) {
     try {
       dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
+        where: { email: normalizedEmail },
       });
     } catch (e) {
       console.warn("DB user fetch fallback:", e);
     }
   }
 
-  const isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
+  const isRegistered =
+    isRegisteredCookie ||
+    emailProfile?.isRegistered === true ||
+    dbUser?.isRegistered === true;
 
   if (!isRegistered) {
     redirect("/onboarding");
   }
 
-  const branch = dbUser?.branch || "Computer Science & Engineering";
-  const yearOfStudy = dbUser?.yearOfStudy || "III";
-  const uidNumber = dbUser?.uidNumber || "23CS01049";
+  const branch = dbUser?.branch || emailProfile?.branch || "Computer Science & Engineering";
+  const yearOfStudy = dbUser?.yearOfStudy || emailProfile?.yearOfStudy || "III";
+  const uidNumber = dbUser?.uidNumber || emailProfile?.uidNumber || "23CS01049";
 
   return (
     <AppLayoutShell user={user}>

@@ -19,6 +19,7 @@ export async function completeRegistration(formData: RegisterFormData) {
     return { success: false, error: "Unauthorized. Please sign in with Google or GitHub first." };
   }
 
+  const normalizedEmail = session.user.email.toLowerCase().trim();
   const { name, branch, yearOfStudy, uidNumber } = formData;
 
   if (!name.trim() || !branch.trim() || !yearOfStudy.trim() || !uidNumber.trim()) {
@@ -30,7 +31,7 @@ export async function completeRegistration(formData: RegisterFormData) {
     if (process.env.DATABASE_URL) {
       try {
         await prisma.user.upsert({
-          where: { email: session.user.email },
+          where: { email: normalizedEmail },
           update: {
             name,
             branch,
@@ -39,7 +40,7 @@ export async function completeRegistration(formData: RegisterFormData) {
             isRegistered: true,
           },
           create: {
-            email: session.user.email,
+            email: normalizedEmail,
             name,
             image: session.user.image,
             branch,
@@ -53,9 +54,27 @@ export async function completeRegistration(formData: RegisterFormData) {
       }
     }
 
-    // 2. Set permanent registration cookie so the user is unlocked
+    // 2. Set permanent registration cookies
+    // - Global registration cookie
+    // - Email-specific profile cookie (guarantees Google & GitHub for same email share the EXACT same registration profile!)
     const cookieStore = await cookies();
+    const emailKey = Buffer.from(normalizedEmail).toString("hex");
+
     cookieStore.set("stash_registered", "true", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    cookieStore.set(`stash_reg_${emailKey}`, JSON.stringify({
+      name,
+      branch,
+      yearOfStudy,
+      uidNumber,
+      isRegistered: true,
+    }), {
       path: "/",
       maxAge: 60 * 60 * 24 * 365, // 1 year
       httpOnly: true,
@@ -65,7 +84,7 @@ export async function completeRegistration(formData: RegisterFormData) {
 
     // 3. Dispatch Welcome Email Notification
     await sendWelcomeEmail({
-      email: session.user.email,
+      email: normalizedEmail,
       name,
       branch,
       yearOfStudy,
