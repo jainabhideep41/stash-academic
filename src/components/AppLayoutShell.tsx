@@ -15,6 +15,7 @@ import {
   X,
   ChevronRight,
   UserCircle,
+  Sparkles,
 } from "lucide-react";
 
 interface AppLayoutShellProps {
@@ -37,6 +38,11 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
       icon: LayoutDashboard,
     },
     {
+      name: "Assessment Studio",
+      href: "/assessment",
+      icon: Sparkles,
+    },
+    {
       name: "File Vault",
       href: "/vault",
       icon: FolderArchive,
@@ -55,6 +61,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 
   const getPageTitle = () => {
     if (pathname === "/dashboard") return "Dashboard";
+    if (pathname === "/assessment") return "Assessment Studio & Synthesis";
     if (pathname === "/vault") return "File Vault & Sharing";
     if (pathname === "/notes") return "Notes & Study Guides";
     if (pathname === "/profile") return "Student Profile & Credentials";

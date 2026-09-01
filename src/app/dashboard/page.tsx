@@ -18,6 +18,7 @@ import {
   CreditCard,
   GraduationCap,
   UserCircle,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -112,6 +113,13 @@ export default async function DashboardPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Link
+              href="/assessment"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-md cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              Assessment Studio
+            </Link>
+            <Link
               href="/profile"
               className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-white/10 text-white font-bold text-xs transition cursor-pointer"
             >
@@ -120,9 +128,9 @@ export default async function DashboardPage() {
             </Link>
             <Link
               href="/vault"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-md cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-white/10 text-white font-bold text-xs transition cursor-pointer"
             >
-              <UploadCloud className="w-4 h-4 text-black" />
+              <UploadCloud className="w-4 h-4 text-white" />
               Upload File
             </Link>
             <Link
