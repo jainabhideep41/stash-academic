@@ -13,13 +13,13 @@ import {
   ArrowRight,
   Clock,
   CheckCircle2,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await auth();
 
-  // Redirect unauthenticated users back to login page
   if (!session?.user) {
     redirect("/");
   }
@@ -38,7 +38,20 @@ export default async function DashboardPage() {
             <span className="font-bold text-lg text-white">Stash</span>
           </Link>
 
-          <UserAccountNav />
+          <div className="flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-300">
+              <Link href="/vault" className="hover:text-indigo-400 flex items-center gap-1.5 transition">
+                <FolderArchive className="w-4 h-4 text-indigo-400" />
+                <span>File Vault</span>
+              </Link>
+              <Link href="/notes" className="hover:text-purple-400 flex items-center gap-1.5 transition">
+                <FileText className="w-4 h-4 text-purple-400" />
+                <span>Notes & Summaries</span>
+              </Link>
+            </nav>
+
+            <UserAccountNav />
+          </div>
         </div>
       </header>
 
@@ -74,42 +87,60 @@ export default async function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-md shadow-indigo-600/20 cursor-pointer">
+              <Link
+                href="/vault"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition shadow-md shadow-indigo-600/20"
+              >
                 <UploadCloud className="w-4 h-4" />
-                Upload Material
-              </button>
+                Upload to Vault
+              </Link>
+              <Link
+                href="/notes"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold transition shadow-md shadow-purple-600/20"
+              >
+                <FileText className="w-4 h-4" />
+                New Note
+              </Link>
             </div>
           </div>
         </div>
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+          <Link
+            href="/vault"
+            className="bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 rounded-2xl p-5 transition group"
+          >
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
-              <span>Active Courses</span>
-              <BookOpen className="w-4 h-4 text-indigo-400" />
+              <span>File Vault Repository</span>
+              <FolderArchive className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">5</div>
-            <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> All current semester modules
+            <div className="text-2xl font-bold text-white">12 Files</div>
+            <p className="text-[11px] text-indigo-300 mt-1 flex items-center gap-1">
+              Click to open file vault &rarr;
             </p>
-          </div>
+          </Link>
 
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+          <Link
+            href="/notes"
+            className="bg-slate-900/60 border border-slate-800 hover:border-purple-500/40 rounded-2xl p-5 transition group"
+          >
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
               <span>Saved Notes</span>
-              <FileText className="w-4 h-4 text-purple-400" />
+              <FileText className="w-4 h-4 text-purple-400 group-hover:scale-110 transition" />
             </div>
-            <div className="text-2xl font-bold text-white">24</div>
-            <p className="text-[11px] text-slate-400 mt-1">12 created this week</p>
-          </div>
+            <div className="text-2xl font-bold text-white">24 Notes</div>
+            <p className="text-[11px] text-purple-300 mt-1 flex items-center gap-1">
+              Click to view study notes &rarr;
+            </p>
+          </Link>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
               <span>Upcoming Deadlines</span>
               <Calendar className="w-4 h-4 text-cyan-400" />
             </div>
-            <div className="text-2xl font-bold text-white">3</div>
+            <div className="text-2xl font-bold text-white">3 Tasks</div>
             <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3" /> Next due in 2 days
             </p>
@@ -117,25 +148,24 @@ export default async function DashboardPage() {
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
             <div className="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
-              <span>Shared Resources</span>
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Share Links Active</span>
+              <Share2 className="w-4 h-4 text-emerald-400" />
             </div>
-            <div className="text-2xl font-bold text-white">18</div>
-            <p className="text-[11px] text-slate-400 mt-1">Available in study group</p>
+            <div className="text-2xl font-bold text-white">18 Links</div>
+            <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Publicly accessible
+            </p>
           </div>
         </div>
 
         {/* Core Sections Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left 2 Columns: Course Hub */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-indigo-400" />
                 Current Courses & Syllabi
               </h2>
-              <span className="text-xs text-indigo-400 hover:underline cursor-pointer">View All</span>
             </div>
 
             <div className="space-y-3">
@@ -160,13 +190,18 @@ export default async function DashboardPage() {
                       <p className="text-xs text-slate-400">{course.topics}</p>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-white group-hover:translate-x-1 transition" />
+                  <Link
+                    href={`/vault?course=${encodeURIComponent(course.code)}`}
+                    className="flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+                  >
+                    Open Vault
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
+                  </Link>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right Column: Deadlines & Quick Notes */}
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Calendar className="w-5 h-5 text-cyan-400" />
@@ -193,7 +228,6 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
-
         </div>
       </main>
     </div>
