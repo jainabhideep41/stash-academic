@@ -1,5 +1,8 @@
 # Stash - Academic Student Portal
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-stash--academic-blue?logo=github)](https://github.com/jainabhideep41/stash-academic)
+[![Deploy with Vercel](https://vercel.com/button)](https://stash-academic.vercel.app)
+
 A modern, deployable academic web application built with **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS**, and **NextAuth.js v5** with Google OAuth single sign-on.
 
 ---
