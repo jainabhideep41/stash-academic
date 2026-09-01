@@ -1,5 +1,6 @@
 import React from "react";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { GitHubSignInButton } from "@/components/GitHubSignInButton";
 import { UserAccountNav } from "@/components/UserAccountNav";
 import {
   GraduationCap,
@@ -90,12 +91,12 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Right Column: Student Google Authorization Card */}
+          {/* Right Column: Student Google & GitHub Authorization Card */}
           <div className="lg:col-span-5">
             <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative">
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="text-center space-y-2 mb-8">
+              <div className="text-center space-y-2 mb-6">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mx-auto mb-3">
                   <ShieldCheck className="w-6 h-6 text-indigo-400" />
                 </div>
@@ -103,7 +104,7 @@ export default async function HomePage() {
                   Student Sign In
                 </h2>
                 <p className="text-sm text-slate-400">
-                  Authenticate with your Google account to access your Stash workspace.
+                  Authenticate with your Google or GitHub account to access Stash.
                 </p>
               </div>
 
@@ -136,24 +137,25 @@ export default async function HomePage() {
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <GoogleSignInButton buttonText="Sign in with Google" />
+                <div className="space-y-4">
+                  <GoogleSignInButton buttonText="Continue with Google" />
+                  <GitHubSignInButton buttonText="Continue with GitHub" />
 
                   <div className="relative flex py-1 items-center">
                     <div className="flex-grow border-t border-slate-800"></div>
-                    <span className="flex-shrink mx-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Authorization Notice
+                    <span className="flex-shrink mx-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Authorization SSO
                     </span>
                     <div className="flex-grow border-t border-slate-800"></div>
                   </div>
 
-                  <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 text-xs text-slate-400 space-y-2">
+                  <div className="bg-slate-955 rounded-xl p-3.5 border border-slate-800/80 text-xs text-slate-400 space-y-1.5">
                     <div className="flex items-center gap-2 text-slate-300 font-medium">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      Student Single Sign-On (SSO)
+                      Secure Multi-Provider Single Sign-On
                     </div>
-                    <p className="leading-relaxed">
-                      Use your official university or personal Google account. No registration passwords required.
+                    <p className="leading-relaxed text-[11px]">
+                      Use your official university Google account or student GitHub account. No password creation required.
                     </p>
                   </div>
                 </div>
@@ -208,7 +210,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-4 text-slate-400">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-              Auth Status: Google OAuth Ready
+              Auth Status: Google & GitHub OAuth Active
             </span>
           </div>
         </div>
