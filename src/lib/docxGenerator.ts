@@ -9,7 +9,9 @@ import {
   TableCell,
   WidthType,
   BorderStyle,
+  Header,
 } from "docx";
+import { CU_HEADER_BASE64 } from "./cuHeaderBase64";
 
 export interface OutputItem {
   heading: string;
@@ -358,19 +360,54 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     children.push(createBodyLine(out, false, 60));
   });
 
-  // Construct Document
+function base64ToUint8Array(base64: string): Uint8Array {
+  if (typeof window !== "undefined" && typeof window.atob === "function") {
+    const binaryString = window.atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+  const buf = Buffer.from(base64, "base64");
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+  // Construct Document with official Chandigarh University header
+  const cuHeaderBytes = base64ToUint8Array(CU_HEADER_BASE64);
+
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
             margin: {
-              top: 1000,
+              top: 2420, // Accommodates header banner matching FSD_EXP_04.docx
               bottom: 1000,
-              left: 1200,
-              right: 1200,
+              left: 1080,
+              right: 1440,
+              header: 360,
             },
           },
+        },
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                spacing: { before: 0, after: 100 },
+                children: [
+                  new ImageRun({
+                    data: cuHeaderBytes,
+                    transformation: {
+                      width: 594,
+                      height: 154,
+                    },
+                    type: "png",
+                  }),
+                ],
+              }),
+            ],
+          }),
         },
         children,
       },
