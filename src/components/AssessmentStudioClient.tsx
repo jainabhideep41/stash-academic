@@ -5,6 +5,7 @@ import Link from "next/link";
 import JSZip from "jszip";
 import { generateFsdDocx, CodeFileItem, OutputItem } from "@/lib/docxGenerator";
 import { generateAssessmentObjectivesAndOutcomes } from "@/app/actions/generateAssessmentAi";
+import { saveUserGeminiApiKey } from "@/app/actions/register";
 import {
   Code2,
   Globe,
@@ -25,6 +26,9 @@ import {
   ArrowRight,
   Key,
   Copy,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from "lucide-react";
 
 interface AssessmentStudioClientProps {
@@ -164,6 +168,40 @@ export function AssessmentStudioClient({
   const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+
+  // Gemini API Key Inline State
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [keySavedInline, setKeySavedInline] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("stash_gemini_api_key");
+    if (saved) setGeminiApiKeyInput(saved);
+  }, []);
+
+  const handleSaveInlineKey = async () => {
+    const key = geminiApiKeyInput.trim();
+    if (!key) {
+      localStorage.removeItem("stash_gemini_api_key");
+      document.cookie = "stash_gemini_key=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      try {
+        await saveUserGeminiApiKey("");
+      } catch {}
+      setKeySavedInline(true);
+      setTimeout(() => setKeySavedInline(false), 2000);
+      return;
+    }
+
+    localStorage.setItem("stash_gemini_api_key", key);
+    document.cookie = `stash_gemini_key=${encodeURIComponent(key)}; path=/; max-age=31536000; SameSite=Lax`;
+    try {
+      await saveUserGeminiApiKey(key);
+    } catch {}
+    setKeySavedInline(true);
+    setAiError(null);
+    setTimeout(() => setKeySavedInline(false), 2000);
+  };
 
   const handleGenerateAiObjectives = async () => {
     if (!aimEasy.trim() && !aimMedium.trim() && !aimHard.trim()) {
@@ -171,9 +209,19 @@ export function AssessmentStudioClient({
       return;
     }
 
-    const apiKey = localStorage.getItem("stash_gemini_api_key") || "";
+    const effectiveKey =
+      geminiApiKeyInput.trim() ||
+      localStorage.getItem("stash_gemini_api_key") ||
+      "";
+
+    if (!effectiveKey) {
+      setAiError("Please paste your Google Gemini API key in the box below to generate live objectives.");
+      return;
+    }
+
     setIsAiGenerating(true);
     setAiError(null);
+    setAiSuccessMessage(null);
 
     try {
       const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
@@ -183,12 +231,14 @@ export function AssessmentStudioClient({
         aimHard,
         courseTitle: activeCourse?.title || "Full Stack Development - II",
         codeSnippet: firstCodeFile?.rawContent,
-        apiKey,
+        apiKey: effectiveKey,
       });
 
       if (res.success && res.objectives && res.learningOutcomes) {
         setObjectives(res.objectives);
         setLearningOutcomes(res.learningOutcomes);
+        setAiSuccessMessage("✓ Gemini AI generated 6 objectives & 6 learning outcomes!");
+        setTimeout(() => setAiSuccessMessage(null), 4000);
       } else {
         setAiError(res.error || "Failed to generate AI pointers.");
       }
@@ -395,7 +445,7 @@ export function AssessmentStudioClient({
       let finalObjectives = objectives;
       let finalLearningOutcomes = learningOutcomes;
 
-      const apiKey = localStorage.getItem("stash_gemini_api_key") || "";
+      const apiKey = geminiApiKeyInput.trim() || localStorage.getItem("stash_gemini_api_key") || "";
       const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
 
       try {
@@ -896,36 +946,91 @@ export function AssessmentStudioClient({
               </div>
 
               {/* 5. Objectives & Learning Outcomes (AI Generated Pointers) */}
-              <div className="space-y-3 pt-3 border-t border-white/10">
+              <div className="space-y-3.5 pt-3 border-t border-white/10">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">
-                    5. Objectives & Learning Outcomes (AI Generated Pointers)
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>5. Objectives & Learning Outcomes (AI Generated Pointers)</span>
                   </span>
                   
                   <button
                     type="button"
                     onClick={handleGenerateAiObjectives}
                     disabled={isAiGenerating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 text-xs font-mono font-bold transition cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-500/25 hover:bg-purple-500/35 border border-purple-500/50 text-purple-200 text-xs font-mono font-bold transition shadow-lg shadow-purple-500/10 cursor-pointer disabled:opacity-50"
                   >
                     {isAiGenerating ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
                     ) : (
                       <Sparkles className="w-3.5 h-3.5 text-purple-300" />
                     )}
-                    <span>{isAiGenerating ? "Synthesizing with Gemini..." : "✨ Generate with Gemini AI"}</span>
+                    <span>{isAiGenerating ? "Synthesizing with Gemini AI..." : "✨ Generate with Gemini AI"}</span>
                   </button>
                 </div>
+
+                {/* Inline Gemini API Key Setup Box */}
+                <div className="p-3.5 rounded-2xl bg-black/60 border border-purple-500/30 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-white">
+                      <Key className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Google Gemini API Key:</span>
+                      {geminiApiKeyInput && (
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                          ● Key Ready
+                        </span>
+                      )}
+                    </div>
+
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 font-bold underline"
+                    >
+                      <span>Get Free Google Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showGeminiKey ? "text" : "password"}
+                        value={geminiApiKeyInput}
+                        onChange={(e) => setGeminiApiKeyInput(e.target.value)}
+                        placeholder="Paste your key here (e.g. AIzaSy...)"
+                        className="w-full px-3 py-2 pr-10 rounded-xl bg-black border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGeminiKey(!showGeminiKey)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition p-1"
+                      >
+                        {showGeminiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveInlineKey}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      {keySavedInline ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Key className="w-3.5 h-3.5" />}
+                      <span>{keySavedInline ? "Saved!" : "Save Key"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {aiSuccessMessage && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{aiSuccessMessage}</span>
+                  </div>
+                )}
 
                 {aiError && (
                   <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center justify-between gap-2">
                     <span>{aiError}</span>
-                    <Link
-                      href="/profile"
-                      className="text-white underline font-bold hover:text-purple-300 shrink-0"
-                    >
-                      Add Key in Profile &rarr;
-                    </Link>
                   </div>
                 )}
 
