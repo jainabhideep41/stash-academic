@@ -141,7 +141,16 @@ export function AssessmentStudioClient({
 
   // Output Images
   const [outputItems, setOutputItems] = useState<
-    { id: string; heading: string; imageFile: File | null; previewUrl: string | null; bytes: Uint8Array | null }[]
+    {
+      id: string;
+      heading: string;
+      imageFile: File | null;
+      previewUrl: string | null;
+      bytes: Uint8Array | null;
+      base64DataUrl?: string | null;
+      width?: number;
+      height?: number;
+    }[]
   >([
     { id: "1", heading: "#Dashboard:", imageFile: null, previewUrl: null, bytes: null },
   ]);
@@ -323,20 +332,99 @@ export function AssessmentStudioClient({
     "#TestResults:",
   ];
 
+  // Converts any image (PNG, JPEG, WebP, AVIF, BMP, Clipboard Blob) into standard PNG bytes & Data URL via canvas
+  const processImageToStandardPng = (file: File | Blob): Promise<{
+    bytes: Uint8Array;
+    base64DataUrl: string;
+    previewUrl: string;
+    width: number;
+    height: number;
+  }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const rawDataUrl = e.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const naturalWidth = img.naturalWidth || img.width || 800;
+          const naturalHeight = img.naturalHeight || img.height || 600;
+
+          const canvas = document.createElement("canvas");
+          canvas.width = naturalWidth;
+          canvas.height = naturalHeight;
+          const ctx = canvas.getContext("2d");
+
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const pngDataUrl = canvas.toDataURL("image/png");
+
+            // Convert to clean standard byte array using atob
+            const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, "");
+            const binaryStr = atob(base64Data);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
+            }
+
+            resolve({
+              bytes,
+              base64DataUrl: pngDataUrl,
+              previewUrl: pngDataUrl,
+              width: naturalWidth,
+              height: naturalHeight,
+            });
+          } else {
+            resolve({
+              bytes: new Uint8Array(),
+              base64DataUrl: rawDataUrl,
+              previewUrl: rawDataUrl,
+              width: naturalWidth,
+              height: naturalHeight,
+            });
+          }
+        };
+        img.onerror = () => reject(new Error("Failed to load image in canvas"));
+        img.src = rawDataUrl;
+      };
+      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleOutputImageUpload = async (id: string, file: File) => {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8 = new Uint8Array(arrayBuffer);
-      const previewUrl = URL.createObjectURL(file);
+      const processed = await processImageToStandardPng(file);
       setOutputItems((prev) =>
         prev.map((item) =>
           item.id === id
-            ? { ...item, imageFile: file, previewUrl, bytes: uint8 }
+            ? {
+                ...item,
+                imageFile: file,
+                previewUrl: processed.previewUrl,
+                bytes: processed.bytes,
+                base64DataUrl: processed.base64DataUrl,
+                width: processed.width,
+                height: processed.height,
+              }
             : item
         )
       );
     } catch (err) {
-      console.error("Error processing output image:", err);
+      console.error("Error processing output image via canvas, using raw fallback:", err);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+        const previewUrl = URL.createObjectURL(file);
+        setOutputItems((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, imageFile: file, previewUrl, bytes: uint8 }
+              : item
+          )
+        );
+      } catch (fallbackErr) {
+        console.error("Critical image loading failure:", fallbackErr);
+      }
     }
   };
 
@@ -495,6 +583,9 @@ export function AssessmentStudioClient({
       const finalOutputs: OutputItem[] = outputItems.map((o) => ({
         heading: o.heading,
         imageBytes: o.bytes,
+        base64DataUrl: o.base64DataUrl,
+        width: o.width,
+        height: o.height,
       }));
 
       // Generate the exact docx blob

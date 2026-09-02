@@ -18,6 +18,9 @@ import { CU_HEADER_BASE64 } from "./cuHeaderBase64";
 export interface OutputItem {
   heading: string;
   imageBytes?: Uint8Array | null;
+  base64DataUrl?: string | null;
+  width?: number;
+  height?: number;
   imageType?: "image/png" | "image/jpeg" | "image/gif";
 }
 
@@ -274,20 +277,46 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     );
 
     // Embedded Image if present
-    if (out.imageBytes && out.imageBytes.length > 0) {
+    const rawImage = out.base64DataUrl || (out.imageBytes && out.imageBytes.length > 0 ? out.imageBytes : null);
+    if (rawImage) {
       try {
-        const imgType = detectImageType(out.imageBytes);
+        let imageBytes: Uint8Array;
+        if (typeof rawImage === "string") {
+          imageBytes = base64ToUint8Array(rawImage);
+        } else {
+          imageBytes = rawImage;
+        }
+
+        const detected = detectImageType(imageBytes);
+        const finalType = detected === "jpg" ? "jpeg" : detected;
+
+        // Proportional sizing up to 540pt width and 340pt height
+        let targetWidth = 520;
+        let targetHeight = 310;
+        if (out.width && out.height && out.width > 0 && out.height > 0) {
+          const maxWidth = 540;
+          const maxHeight = 340;
+          const ratio = out.width / out.height;
+          if (ratio > maxWidth / maxHeight) {
+            targetWidth = maxWidth;
+            targetHeight = Math.round(maxWidth / ratio);
+          } else {
+            targetHeight = Math.min(maxHeight, out.height);
+            targetWidth = Math.round(targetHeight * ratio);
+          }
+        }
+
         children.push(
           new Paragraph({
             spacing: { before: 80, after: 200 },
             children: [
               new ImageRun({
-                data: out.imageBytes,
+                data: imageBytes,
                 transformation: {
-                  width: 520,
-                  height: 310,
+                  width: targetWidth,
+                  height: targetHeight,
                 },
-                type: imgType,
+                type: finalType,
               }),
             ],
           })
