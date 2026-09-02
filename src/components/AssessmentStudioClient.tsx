@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
 import { generateFsdDocx, CodeFileItem, OutputItem } from "@/lib/docxGenerator";
@@ -24,6 +24,7 @@ import {
   Loader2,
   ArrowRight,
   Key,
+  Copy,
 } from "lucide-react";
 
 interface AssessmentStudioClientProps {
@@ -252,6 +253,7 @@ export function AssessmentStudioClient({
   };
 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
   const HEADING_PRESETS = [
     "#Dashboard:",
@@ -262,6 +264,42 @@ export function AssessmentStudioClient({
     "#TerminalExecution:",
     "#TestResults:",
   ];
+
+  const handleOutputImageUpload = async (id: string, file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      const previewUrl = URL.createObjectURL(file);
+      setOutputItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, imageFile: file, previewUrl, bytes: uint8 }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error("Error processing output image:", err);
+    }
+  };
+
+  const handlePasteFromClipboardButton = async (id: string) => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith("image/")) {
+            const blob = await item.getType(type);
+            const file = new File([blob], `screenshot_${Date.now()}.png`, { type });
+            await handleOutputImageUpload(id, file);
+            return;
+          }
+        }
+      }
+      alert("No image found in clipboard. Take a screenshot (Win + Shift + S) and click Paste again!");
+    } catch (err) {
+      alert("Clipboard permission prompt or press Ctrl + V directly inside the box to paste.");
+    }
+  };
 
   const handlePasteImage = (id: string, e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -278,8 +316,50 @@ export function AssessmentStudioClient({
     }
   };
 
+  // Global window paste listener when modal is active
+  useEffect(() => {
+    if (!activeCourse) return;
+
+    const handleGlobalPaste = async (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA") &&
+        target.getAttribute("type") !== "file"
+      ) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            const targetId =
+              selectedSlotId ||
+              outputItems.find((o) => !o.previewUrl)?.id ||
+              outputItems[outputItems.length - 1]?.id ||
+              outputItems[0]?.id;
+
+            if (targetId) {
+              await handleOutputImageUpload(targetId, file);
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => window.removeEventListener("paste", handleGlobalPaste);
+  }, [activeCourse, outputItems, selectedSlotId]);
+
   const handleDropImage = (id: string, e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverId(null);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
@@ -289,30 +369,16 @@ export function AssessmentStudioClient({
 
   // Add Output Image Slot
   const handleAddOutput = () => {
+    const newId = Date.now().toString();
     setOutputItems([
       ...outputItems,
-      { id: Date.now().toString(), heading: "#OutputView:", imageFile: null, previewUrl: null, bytes: null },
+      { id: newId, heading: "#OutputView:", imageFile: null, previewUrl: null, bytes: null },
     ]);
+    setSelectedSlotId(newId);
   };
 
   const handleRemoveOutput = (id: string) => {
     setOutputItems(outputItems.filter((o) => o.id !== id));
-  };
-
-  const handleOutputImageUpload = async (id: string, file: File) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8 = new Uint8Array(arrayBuffer);
-      setOutputItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, imageFile: file, previewUrl: URL.createObjectURL(file), bytes: uint8 }
-            : item
-        )
-      );
-    };
-    reader.readAsArrayBuffer(file);
   };
 
   // Generate & Download .docx File
@@ -737,60 +803,90 @@ export function AssessmentStudioClient({
 
                       {/* Interactive Drag & Drop / Browse / Clipboard Paste Zone */}
                       <div
-                        onDragOver={(e) => {
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedSlotId(item.id);
+                          document.getElementById(`file-input-${item.id}`)?.click();
+                        }}
+                        onFocus={() => setSelectedSlotId(item.id)}
+                        onDragEnter={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           setDragOverId(item.id);
                         }}
-                        onDragLeave={() => setDragOverId(null)}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOverId(item.id);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOverId(null);
+                        }}
                         onDrop={(e) => handleDropImage(item.id, e)}
-                        className={`border-2 border-dashed rounded-xl p-4 transition text-center relative group cursor-pointer ${
+                        className={`border-2 border-dashed rounded-2xl p-4 transition text-center relative group cursor-pointer ${
                           dragOverId === item.id
-                            ? "border-rose-400 bg-rose-500/10"
-                            : "border-white/15 hover:border-white/30 bg-neutral-950/60"
+                            ? "border-rose-400 bg-rose-500/20 scale-[1.01]"
+                            : selectedSlotId === item.id
+                            ? "border-purple-400/80 bg-neutral-950/90"
+                            : "border-white/15 hover:border-white/35 bg-neutral-950/60"
                         }`}
                       >
+                        {/* Hidden Native Input triggered by click */}
                         <input
+                          id={`file-input-${item.id}`}
                           type="file"
                           accept="image/*"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
                             if (f) handleOutputImageUpload(item.id, f);
                           }}
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          className="hidden"
                         />
 
                         {item.previewUrl ? (
-                          <div className="flex items-center justify-between gap-4 pointer-events-none">
+                          <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                               <img
                                 src={item.previewUrl}
                                 alt="Output preview"
-                                className="h-16 w-24 object-cover rounded-lg border border-white/20 shadow-md"
+                                className="h-16 w-24 object-cover rounded-xl border border-white/20 shadow-md"
                               />
                               <div className="text-left">
                                 <span className="text-xs font-mono font-bold text-white block truncate max-w-[220px]">
                                   {item.imageFile?.name || "Pasted Screenshot"}
                                 </span>
-                                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                                  <Check className="w-3 h-3" /> Image Loaded & Ready
+                                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
+                                  <Check className="w-3.5 h-3.5" /> Image Loaded & Ready
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[11px] font-mono text-slate-400 group-hover:text-white underline">
-                              Change / Replace
+                            <span className="text-xs font-mono text-slate-400 group-hover:text-white underline">
+                              Change Image
                             </span>
                           </div>
                         ) : (
-                          <div className="space-y-1.5 pointer-events-none py-2">
-                            <div className="flex items-center justify-center gap-2 text-slate-300 group-hover:text-white">
+                          <div className="space-y-2.5 py-2">
+                            <div className="flex items-center justify-center gap-2 text-slate-300 group-hover:text-white transition">
                               <UploadCloud className="w-5 h-5 text-rose-400" />
                               <span className="text-xs font-bold text-white">
-                                Drag & Drop, Click to browse, or simply Paste (Ctrl + V)
+                                Drop image here, click to browse, or paste with Ctrl + V
                               </span>
                             </div>
-                            <p className="text-[10px] font-mono text-slate-500">
-                              Directly paste with Ctrl + V after taking a screenshot
-                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePasteFromClipboardButton(item.id);
+                                }}
+                                className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 transition cursor-pointer"
+                              >
+                                <Copy className="w-3 h-3 text-rose-400" />
+                                <span>Paste from Clipboard</span>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
