@@ -4,7 +4,10 @@ import {
   Paragraph,
   TextRun,
   ImageRun,
-  AlignmentType,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
   BorderStyle,
 } from "docx";
 
@@ -38,8 +41,23 @@ export interface FsdDocxParams {
   learningOutcomes: string[];
 }
 
+function detectImageType(bytes: Uint8Array): "png" | "jpg" | "gif" {
+  if (bytes && bytes.length >= 4) {
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+      return "png";
+    }
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+      return "jpg";
+    }
+    if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+      return "gif";
+    }
+  }
+  return "png";
+}
+
 export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // Font family constant
   const FONT_NAME = "Times New Roman";
@@ -92,29 +110,167 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
   // 1. Experiment Header
   children.push(createHeading(`Experiment ${params.experimentNo}`, 0, 140));
 
-  // 2. Student & Course Meta Info (Bold 14pt / 12pt matching EXP 4)
-  const metaLines = [
-    `Student Name: ${params.studentName}\t\t\tUID: ${params.uid}`,
-    `Branch: ${params.branch}\t\t\tSection/Group: ${params.sectionGroup}`,
-    `Semester: ${params.semester}\t\t\tDate of Performance: ${params.dateOfPerformance}`,
-    `Subject Name: ${params.subjectName}\t\tSubject Code: ${params.subjectCode}`,
-  ];
-
-  metaLines.forEach((line) => {
-    children.push(
-      new Paragraph({
-        spacing: { before: 40, after: 60 },
+  // 2. Student & Course Meta Info (Clean 2-Column Table matching FSD_EXP_04)
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
+  const metaTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+      insideHorizontal: noBorder,
+      insideVertical: noBorder,
+    },
+    rows: [
+      new TableRow({
         children: [
-          new TextRun({
-            text: line,
-            bold: true,
-            size: 28, // 14pt
-            font: FONT_NAME,
+          new TableCell({
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Student Name: ${params.studentName}`,
+                    bold: true,
+                    size: 28, // 14pt
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `UID: ${params.uid}`,
+                    bold: true,
+                    size: 28, // 14pt
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
           }),
         ],
-      })
-    );
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Branch: ${params.branch}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Section/Group: ${params.sectionGroup}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Semester: ${params.semester}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Date of Performance: ${params.dateOfPerformance}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Subject Name: ${params.subjectName}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                spacing: { before: 40, after: 60 },
+                children: [
+                  new TextRun({
+                    text: `Subject Code: ${params.subjectCode}`,
+                    bold: true,
+                    size: 28,
+                    font: FONT_NAME,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
   });
+
+  children.push(metaTable);
 
   // 3. AIM Section (Exact same user text)
   children.push(createHeading("AIM:", 240, 100));
@@ -174,6 +330,7 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     // Embedded Image if present
     if (out.imageBytes && out.imageBytes.length > 0) {
       try {
+        const imgType = detectImageType(out.imageBytes);
         children.push(
           new Paragraph({
             spacing: { before: 80, after: 200 },
@@ -181,10 +338,11 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
               new ImageRun({
                 data: out.imageBytes,
                 transformation: {
-                  width: 540,
-                  height: 320,
+                  width: 520,
+                  height: 310,
                 },
-              } as any),
+                type: imgType,
+              }),
             ],
           })
         );
