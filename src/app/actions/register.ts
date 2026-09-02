@@ -110,18 +110,19 @@ export async function saveUserGeminiApiKey(apiKey: string) {
 
   const normalizedEmail = session.user.email.toLowerCase().trim();
   const cleanedKey = apiKey.trim();
+  const isRemoving = cleanedKey === "";
 
   try {
-    // 1. Save to Database if configured
+    // 1. Save or erase in Database if configured
     if (process.env.DATABASE_URL) {
       try {
         await prisma.user.upsert({
           where: { email: normalizedEmail },
-          update: { geminiApiKey: cleanedKey },
+          update: { geminiApiKey: isRemoving ? null : cleanedKey },
           create: {
             email: normalizedEmail,
             name: session.user.name,
-            geminiApiKey: cleanedKey,
+            geminiApiKey: isRemoving ? null : cleanedKey,
           },
         });
       } catch (dbErr) {
@@ -129,18 +130,33 @@ export async function saveUserGeminiApiKey(apiKey: string) {
       }
     }
 
-    // 2. Set persistent account cookie keyed to this email
+    // 2. Set or delete persistent account cookies
     const emailKey = Buffer.from(normalizedEmail).toString("hex");
     const cookieStore = await cookies();
-    cookieStore.set(`stash_gemini_${emailKey}`, cleanedKey, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    });
+    if (isRemoving) {
+      cookieStore.delete(`stash_gemini_${emailKey}`);
+      cookieStore.delete("stash_gemini_key");
+    } else {
+      cookieStore.set(`stash_gemini_${emailKey}`, cleanedKey, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+      cookieStore.set("stash_gemini_key", cleanedKey, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+    }
 
-    return { success: true, message: "Gemini API key saved to your account in database!" };
+    return {
+      success: true,
+      message: isRemoving ? "Gemini API key removed successfully." : "Gemini API key saved to your account in database!",
+    };
   } catch (err: any) {
     console.error("Save Gemini Key error:", err);
     return { success: false, error: err.message || "Failed to save API key." };

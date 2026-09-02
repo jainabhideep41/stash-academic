@@ -20,6 +20,7 @@ import {
   EyeOff,
   ExternalLink,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 interface ProfileClientProps {
@@ -62,20 +63,42 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
   const [geminiKey, setGeminiKey] = useState(initialGeminiKey);
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
+  const [keyRemoved, setKeyRemoved] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copiedUid, setCopiedUid] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Load once on initial mount only - NO LOOP when user clears input!
   useEffect(() => {
-    if (!geminiKey) {
+    if (!initialGeminiKey) {
       const saved = localStorage.getItem("stash_gemini_api_key");
       if (saved) setGeminiKey(saved);
     }
-  }, [geminiKey]);
+  }, []);
+
+  const handleRemoveApiKey = async () => {
+    setGeminiKey("");
+    localStorage.removeItem("stash_gemini_api_key");
+    document.cookie = "stash_gemini_key=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    
+    try {
+      await saveUserGeminiApiKey("");
+    } catch (e) {
+      console.warn("DB remove key error:", e);
+    }
+
+    setKeyRemoved(true);
+    setTimeout(() => setKeyRemoved(false), 2500);
+  };
 
   const handleSaveApiKey = async () => {
+    if (!geminiKey.trim()) {
+      await handleRemoveApiKey();
+      return;
+    }
+
     localStorage.setItem("stash_gemini_api_key", geminiKey.trim());
     // Also save in cookie for server actions
     document.cookie = `stash_gemini_key=${encodeURIComponent(geminiKey.trim())}; path=/; max-age=31536000; SameSite=Lax`;
@@ -456,6 +479,16 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
+                {geminiKey && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveApiKey}
+                    className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{keyRemoved ? "Removed!" : "Remove Key"}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleSaveApiKey}
