@@ -10,6 +10,7 @@ export interface GenerateAiParams {
   aimHard: string;
   courseTitle: string;
   codeSnippet?: string;
+  codeFiles?: { filename: string; cleanCode: string }[];
   apiKey?: string;
 }
 
@@ -53,37 +54,54 @@ export async function generateAssessmentObjectivesAndOutcomes(params: GenerateAi
     };
   }
 
+  // Format code context across multiple uploaded files
+  let codeContext = "";
+  if (params.codeFiles && params.codeFiles.length > 0) {
+    codeContext = params.codeFiles
+      .map((f) => `// File: ${f.filename}\n${f.cleanCode.slice(0, 3000)}`)
+      .join("\n\n" + "-".repeat(40) + "\n\n")
+      .slice(0, 16000);
+  } else if (params.codeSnippet) {
+    codeContext = params.codeSnippet.slice(0, 16000);
+  }
+
   const prompt = `
-You are an expert academic curriculum coordinator in Computer Science & Engineering.
-Analyze the following laboratory assessment requirements:
+You are a senior university curriculum auditor and academic evaluator in Computer Science & Engineering.
+You must synthesize laboratory assessment Objectives and Learning Outcomes tailored DIRECTLY to BOTH:
+1. The student's official experiment AIM (Easy, Medium, Hard).
+2. The student's actual uploaded SOURCE CODEBASE (evaluating real components, hooks, functions, state models, UI layouts, event handlers, and data structures).
 
 Course: ${params.courseTitle}
 Aim (Easy): ${params.aimEasy || "Build initial functional module"}
 Aim (Medium): ${params.aimMedium || "Enhance module with interactive functionality"}
 Aim (Hard): ${params.aimHard || "Develop complete production-grade application"}
-${params.codeSnippet ? `Key Code Sample:\n${params.codeSnippet.slice(0, 600)}` : ""}
 
-Generate EXACTLY:
-1. "objectives": Exactly 6 concise institutional academic objective pointers tailored directly to this experiment. Each pointer MUST start with "To understand...", "To implement...", "To create...", "To learn...", etc.
-2. "learningOutcomes": Exactly 6 concise institutional learning outcome pointers. Each pointer MUST start with an active verb like "Implement...", "Create...", "Develop...", "Apply...", "Analyze...", "Integrate...".
+${codeContext ? `--- STUDENT SOURCE CODEBASE IMPLEMENTATION ---\n${codeContext}\n----------------------------------------------` : ""}
 
-Respond STRICTLY in this JSON format:
+CRITICAL REQUIREMENTS:
+- Thoroughly examine the codebase above. Reflect the actual code architecture, libraries, component patterns, state management, and algorithms used.
+- Generate BETWEEN 5 AND 7 bespoke "objectives" (decide dynamically whether 5, 6, or 7 best fits the complexity of this experiment):
+  - Every objective MUST start with an institutional phrase like "To understand...", "To implement...", "To design...", "To develop...", "To construct...", or "To evaluate...".
+  - Ground each pointer in concrete technical details from the code and aim (e.g. React hooks, lifecycle, event handling, component composition, routing, data filtering, responsive CSS).
+- Generate BETWEEN 5 AND 7 bespoke "learningOutcomes" (matching the scope of the objectives):
+  - Every learning outcome MUST start with an active action verb like "Implement...", "Design...", "Develop...", "Configure...", "Integrate...", "Construct...", or "Analyze...".
+  - Focus on practical competencies mastered by building this specific codebase.
+
+Respond STRICTLY in JSON format:
 {
   "objectives": [
     "To understand...",
-    "To create...",
+    "To design...",
     "To implement...",
-    "To apply...",
-    "To analyze...",
+    "To develop...",
     "To evaluate..."
   ],
   "learningOutcomes": [
     "Implement...",
-    "Create...",
+    "Design...",
     "Develop...",
-    "Apply...",
-    "Analyze...",
-    "Integrate..."
+    "Configure...",
+    "Analyze..."
   ]
 }
 `.trim();
@@ -246,7 +264,7 @@ Respond STRICTLY in this JSON format:
  * Parses Gemini response text using multi-strategy extraction:
  * 1. Direct JSON parse
  * 2. Bracket-isolated JSON with trailing comma removal
- * 3. Bullet-point / line-by-line parsing
+ * 3. Bullet-point / line-by-line parsing (retains between 5 and 7 pointers)
  */
 function parseObjectivesAndOutcomes(rawText: string): { objectives: string[]; learningOutcomes: string[] } {
   // Strategy 1 & 2: JSON extraction
@@ -269,10 +287,10 @@ function parseObjectivesAndOutcomes(rawText: string): { objectives: string[]; le
         ? parsed.learningOutcomes.map((s: any) => String(s).trim()).filter(Boolean)
         : [];
 
-      if (objs.length > 0 && outcomes.length > 0) {
+      if (objs.length >= 4 && outcomes.length >= 4) {
         return {
-          objectives: objs.slice(0, 6),
-          learningOutcomes: outcomes.slice(0, 6),
+          objectives: objs.slice(0, 7),
+          learningOutcomes: outcomes.slice(0, 7),
         };
       }
     }
@@ -315,14 +333,14 @@ function parseObjectivesAndOutcomes(rawText: string): { objectives: string[]; le
       !cleanedLine.includes('"objectives"') &&
       !cleanedLine.includes('"learningOutcomes"')
     ) {
-      if (currentSection === "objectives" && extractedObjectives.length < 6) {
+      if (currentSection === "objectives" && extractedObjectives.length < 7) {
         extractedObjectives.push(cleanedLine);
-      } else if (currentSection === "outcomes" && extractedOutcomes.length < 6) {
+      } else if (currentSection === "outcomes" && extractedOutcomes.length < 7) {
         extractedOutcomes.push(cleanedLine);
       } else if (!currentSection) {
-        if (cleanedLine.toLowerCase().startsWith("to ") && extractedObjectives.length < 6) {
+        if (cleanedLine.toLowerCase().startsWith("to ") && extractedObjectives.length < 7) {
           extractedObjectives.push(cleanedLine);
-        } else if (extractedOutcomes.length < 6) {
+        } else if (extractedOutcomes.length < 7) {
           extractedOutcomes.push(cleanedLine);
         }
       }
@@ -349,7 +367,7 @@ function parseObjectivesAndOutcomes(rawText: string): { objectives: string[]; le
   ];
 
   return {
-    objectives: extractedObjectives.length >= 3 ? extractedObjectives : fallbackObjectives,
-    learningOutcomes: extractedOutcomes.length >= 3 ? extractedOutcomes : fallbackOutcomes,
+    objectives: extractedObjectives.length >= 4 ? extractedObjectives.slice(0, 7) : fallbackObjectives,
+    learningOutcomes: extractedOutcomes.length >= 4 ? extractedOutcomes.slice(0, 7) : fallbackOutcomes,
   };
 }

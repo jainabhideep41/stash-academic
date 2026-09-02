@@ -224,21 +224,29 @@ export function AssessmentStudioClient({
     setAiSuccessMessage(null);
 
     try {
-      const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
+      const chosenFiles = unzippedFiles
+        .filter((f) => selectedFilePaths.includes(f.path))
+        .map((f) => ({
+          filename: f.name,
+          cleanCode: stripComments(f.rawContent),
+        }));
+
       const res = await generateAssessmentObjectivesAndOutcomes({
         aimEasy,
         aimMedium,
         aimHard,
         courseTitle: activeCourse?.title || "Full Stack Development - II",
-        codeSnippet: firstCodeFile?.rawContent,
+        codeFiles: chosenFiles,
         apiKey: effectiveKey,
       });
 
       if (res.success && res.objectives && res.learningOutcomes) {
         setObjectives(res.objectives);
         setLearningOutcomes(res.learningOutcomes);
-        setAiSuccessMessage("✓ Gemini AI generated 6 objectives & 6 learning outcomes!");
-        setTimeout(() => setAiSuccessMessage(null), 4000);
+        setAiSuccessMessage(
+          `✓ Gemini synthesized ${res.objectives.length} objectives & ${res.learningOutcomes.length} outcomes from your codebase & aim!`
+        );
+        setTimeout(() => setAiSuccessMessage(null), 4500);
       } else {
         setAiError(res.error || "Failed to generate AI pointers.");
       }
@@ -441,34 +449,7 @@ export function AssessmentStudioClient({
     setIsGeneratingDocx(true);
 
     try {
-      // 1. Run live Google Gemini AI synthesis for Objectives & Outcomes if possible
-      let finalObjectives = objectives;
-      let finalLearningOutcomes = learningOutcomes;
-
-      const apiKey = geminiApiKeyInput.trim() || localStorage.getItem("stash_gemini_api_key") || "";
-      const firstCodeFile = unzippedFiles.find((f) => selectedFilePaths.includes(f.path));
-
-      try {
-        const aiRes = await generateAssessmentObjectivesAndOutcomes({
-          aimEasy,
-          aimMedium,
-          aimHard,
-          courseTitle: activeCourse?.title || "Full Stack Development - II",
-          codeSnippet: firstCodeFile?.rawContent,
-          apiKey,
-        });
-
-        if (aiRes.success && aiRes.objectives && aiRes.learningOutcomes) {
-          finalObjectives = aiRes.objectives;
-          finalLearningOutcomes = aiRes.learningOutcomes;
-          setObjectives(aiRes.objectives);
-          setLearningOutcomes(aiRes.learningOutcomes);
-        }
-      } catch (aiErr) {
-        console.warn("AI generation fallback to standard curriculum pointers:", aiErr);
-      }
-
-      // 2. Prepare clean code files without comments
+      // 1. Prepare clean code files without comments
       const chosenFiles: CodeFileItem[] = unzippedFiles
         .filter((f) => selectedFilePaths.includes(f.path))
         .map((f) => ({
@@ -482,6 +463,32 @@ export function AssessmentStudioClient({
           filename: "App.jsx",
           cleanCode: `import React from 'react';\n\nexport default function App() {\n  return (\n    <div>\n      <h1>Full Stack Development II Assessment</h1>\n    </div>\n  );\n}`,
         });
+      }
+
+      // 2. Run live Google Gemini AI synthesis for Objectives & Outcomes if possible
+      let finalObjectives = objectives;
+      let finalLearningOutcomes = learningOutcomes;
+
+      const apiKey = geminiApiKeyInput.trim() || localStorage.getItem("stash_gemini_api_key") || "";
+
+      try {
+        const aiRes = await generateAssessmentObjectivesAndOutcomes({
+          aimEasy,
+          aimMedium,
+          aimHard,
+          courseTitle: activeCourse?.title || "Full Stack Development - II",
+          codeFiles: chosenFiles,
+          apiKey,
+        });
+
+        if (aiRes.success && aiRes.objectives && aiRes.learningOutcomes) {
+          finalObjectives = aiRes.objectives;
+          finalLearningOutcomes = aiRes.learningOutcomes;
+          setObjectives(aiRes.objectives);
+          setLearningOutcomes(aiRes.learningOutcomes);
+        }
+      } catch (aiErr) {
+        console.warn("AI generation fallback to standard curriculum pointers:", aiErr);
       }
 
       // Prepare Output items
