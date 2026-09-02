@@ -10,6 +10,8 @@ import {
   WidthType,
   BorderStyle,
   Header,
+  AlignmentType,
+  UnderlineType,
 } from "docx";
 import { CU_HEADER_BASE64 } from "./cuHeaderBase64";
 
@@ -109,8 +111,22 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     });
   };
 
-  // 1. Experiment Header
-  children.push(createHeading(`Experiment ${params.experimentNo}`, 0, 140));
+  // 1. Experiment Header (Centered, Times New Roman, Bold, 16pt, Underlined)
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 80, after: 180 },
+      children: [
+        new TextRun({
+          text: `Experiment-${params.experimentNo}`,
+          bold: true,
+          size: 32, // 16pt (half-points: 16 * 2)
+          font: FONT_NAME,
+          underline: { type: UnderlineType.SINGLE },
+        }),
+      ],
+    })
+  );
 
   // 2. Student & Course Meta Info (Clean 2-Column Table matching FSD_EXP_04)
   const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
