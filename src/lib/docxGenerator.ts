@@ -111,16 +111,17 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     });
   };
 
-  // 1. Experiment Header (Centered, Times New Roman, Bold, 16pt, Underlined)
+  // 1. Experiment Header (Centered, Times New Roman, Bold, 16pt, Underlined matching template)
+  const cleanExpNum = params.experimentNo.replace(/^[-_\s]+/, "");
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 80, after: 180 },
       children: [
         new TextRun({
-          text: `Experiment-${params.experimentNo}`,
+          text: `Experiment ${cleanExpNum}`,
           bold: true,
-          size: 32, // 16pt (half-points: 16 * 2)
+          size: 32, // 16pt
           font: FONT_NAME,
           underline: { type: UnderlineType.SINGLE },
         }),
@@ -128,7 +129,33 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     })
   );
 
-  // 2. Student & Course Meta Info (Clean 2-Column Table matching FSD_EXP_04)
+  // Helper for 2-Column Metadata Cells: Label in Bold, Value in Normal (Regular)
+  const createMetaCell = (label: string, value: string, widthPercent: number) => {
+    return new TableCell({
+      width: { size: widthPercent, type: WidthType.PERCENTAGE },
+      children: [
+        new Paragraph({
+          spacing: { before: 30, after: 40 },
+          children: [
+            new TextRun({
+              text: `${label}: `,
+              bold: true,
+              size: 28, // 14pt
+              font: FONT_NAME,
+            }),
+            new TextRun({
+              text: value,
+              bold: false, // Normal (NOT bold)
+              size: 28, // 14pt
+              font: FONT_NAME,
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  // 2. Student & Course Meta Info (Clean 2-Column Table matching FSD_EXP_04.docx)
   const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
   const metaTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -143,146 +170,26 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     rows: [
       new TableRow({
         children: [
-          new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Student Name: ${params.studentName}`,
-                    bold: true,
-                    size: 28, // 14pt
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `UID: ${params.uid}`,
-                    bold: true,
-                    size: 28, // 14pt
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
+          createMetaCell("Student Name", params.studentName, 55),
+          createMetaCell("UID", params.uid, 45),
         ],
       }),
       new TableRow({
         children: [
-          new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Branch: ${params.branch}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Section/Group: ${params.sectionGroup}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
+          createMetaCell("Branch", params.branch, 55),
+          createMetaCell("Section/Group", params.sectionGroup, 45),
         ],
       }),
       new TableRow({
         children: [
-          new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Semester: ${params.semester}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Date of Performance: ${params.dateOfPerformance}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
+          createMetaCell("Semester", params.semester, 55),
+          createMetaCell("Date of Performance", params.dateOfPerformance, 45),
         ],
       }),
       new TableRow({
         children: [
-          new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Subject Name: ${params.subjectName}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 60 },
-                children: [
-                  new TextRun({
-                    text: `Subject Code: ${params.subjectCode}`,
-                    bold: true,
-                    size: 28,
-                    font: FONT_NAME,
-                  }),
-                ],
-              }),
-            ],
-          }),
+          createMetaCell("Subject Name", params.subjectName, 55),
+          createMetaCell("Subject Code", params.subjectCode, 45),
         ],
       }),
     ],
@@ -290,11 +197,32 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
 
   children.push(metaTable);
 
-  // 3. AIM Section (Exact same user text)
+  // Helper for Aim Lines: (Level): in Bold 12pt, description in Normal 12pt
+  const createAimLine = (level: "Easy" | "Medium" | "Hard", text: string) => {
+    return new Paragraph({
+      spacing: { before: 40, after: 60 },
+      children: [
+        new TextRun({
+          text: `(${level}): `,
+          bold: true,
+          size: 24, // 12pt
+          font: FONT_NAME,
+        }),
+        new TextRun({
+          text: text.trim(),
+          bold: false, // Normal (NOT bold)
+          size: 24, // 12pt
+          font: FONT_NAME,
+        }),
+      ],
+    });
+  };
+
+  // 3. AIM Section (Label Bold, Description Normal)
   children.push(createHeading("AIM:", 240, 100));
-  children.push(createBodyLine(`(Easy): ${params.aimEasy.trim()}`, true));
-  children.push(createBodyLine(`(Medium): ${params.aimMedium.trim()}`, true));
-  children.push(createBodyLine(`(Hard): ${params.aimHard.trim()}`, true));
+  children.push(createAimLine("Easy", params.aimEasy));
+  children.push(createAimLine("Medium", params.aimMedium));
+  children.push(createAimLine("Hard", params.aimHard));
 
   // 4. OBJECTIVE Section (AI generated 5-6 points)
   children.push(createHeading("OBJECTIVE:", 240, 100));
