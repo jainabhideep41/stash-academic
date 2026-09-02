@@ -88,11 +88,64 @@ Respond STRICTLY in valid JSON format without markdown code blocks:
 }
 `.trim();
 
-  const modelsToTry = [
-    "gemini-1.5-flash",
+  // 1. Dynamically query Google ModelService to discover which models this API key actually has access to!
+  let activeModels: string[] = [];
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
+    );
+
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      if (Array.isArray(listData.models)) {
+        activeModels = listData.models
+          .filter(
+            (m: any) =>
+              Array.isArray(m.supportedGenerationMethods) &&
+              m.supportedGenerationMethods.includes("generateContent")
+          )
+          .map((m: any) => (m.name || "").replace(/^models\//, ""))
+          .filter(Boolean);
+      }
+    } else {
+      const errData = await listRes.json().catch(() => null);
+      if (errData?.error?.message) {
+        return {
+          success: false,
+          error: `Google Gemini Error: ${errData.error.message}`,
+        };
+      }
+    }
+  } catch (e: any) {
+    console.warn("ModelService.ListModels failed, falling back to static list:", e);
+  }
+
+  // Desired priority order
+  const priorityOrder = [
     "gemini-2.0-flash",
-    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro-latest",
   ];
+
+  let modelsToTry: string[] = [];
+  if (activeModels.length > 0) {
+    // Pick active models based on priority
+    modelsToTry = priorityOrder.filter((m) => activeModels.includes(m));
+    // Append any other available generation models
+    for (const m of activeModels) {
+      if (!modelsToTry.includes(m) && !m.includes("embedding") && !m.includes("aqa")) {
+        modelsToTry.push(m);
+      }
+    }
+  }
+
+  // Fallback default list if ListModels was empty
+  if (modelsToTry.length === 0) {
+    modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"];
+  }
 
   let lastGoogleError = "";
   let jsonText = "";
@@ -129,7 +182,7 @@ Respond STRICTLY in valid JSON format without markdown code blocks:
       lastGoogleError = e?.message || "Network error contacting Google API";
     }
 
-    // Attempt 2: standard prompt without responseMimeType (fallback for models that don't support responseMimeType)
+    // Attempt 2: fallback without responseMimeType
     if (!jsonText) {
       try {
         const res2 = await fetch(
@@ -165,7 +218,7 @@ Respond STRICTLY in valid JSON format without markdown code blocks:
       success: false,
       error: lastGoogleError
         ? `Google Gemini Error: ${lastGoogleError}`
-        : "Gemini API did not return a response. Please check that your API key has Google Generative AI enabled in Google AI Studio.",
+        : "Gemini API did not return a response. Please check your Google AI Studio API key.",
     };
   }
 
@@ -174,7 +227,7 @@ Respond STRICTLY in valid JSON format without markdown code blocks:
     let cleaned = jsonText.trim();
     cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
 
-    // Extract first JSON object if surrounded by prose
+    // Extract first JSON object if surrounded by markdown prose
     const firstBrace = cleaned.indexOf("{");
     const lastBrace = cleaned.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1) {
