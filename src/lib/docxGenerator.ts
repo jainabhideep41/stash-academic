@@ -1,19 +1,5 @@
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  ImageRun,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  BorderStyle,
-  Header,
-  AlignmentType,
-  UnderlineType,
-} from "docx";
-import { CU_HEADER_BASE64 } from "./cuHeaderBase64";
+import JSZip from "jszip";
+import { FSD_TEMPLATE_BASE64 } from "./fsdTemplateBase64";
 
 export interface OutputItem {
   heading: string;
@@ -21,7 +7,7 @@ export interface OutputItem {
   base64DataUrl?: string | null;
   width?: number;
   height?: number;
-  imageType?: "image/png" | "image/jpeg" | "image/gif";
+  imageType?: "png" | "jpg" | "gif";
 }
 
 export interface CodeFileItem {
@@ -48,344 +34,383 @@ export interface FsdDocxParams {
   learningOutcomes: string[];
 }
 
-function detectImageType(bytes: Uint8Array): "png" | "jpg" | "gif" {
-  if (bytes && bytes.length >= 4) {
-    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-      return "png";
-    }
-    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-      return "jpg";
-    }
-    if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
-      return "gif";
-    }
-  }
-  return "png";
+function escapeXml(unsafe: string): string {
+  if (!unsafe) return "";
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
-  const children: (Paragraph | Table)[] = [];
-
-  // Font family constant
-  const FONT_NAME = "Times New Roman";
-
-  // Helper for Heading (Bold, 14pt => sz 28)
-  const createHeading = (text: string, spaceBefore = 240, spaceAfter = 120) => {
-    return new Paragraph({
-      spacing: { before: spaceBefore, after: spaceAfter },
-      children: [
-        new TextRun({
-          text,
-          bold: true,
-          size: 28, // 14pt
-          font: FONT_NAME,
-        }),
-      ],
-    });
-  };
-
-  // Helper for Body/Pointers/Aim (Normal, 12pt => sz 24)
-  const createBodyLine = (text: string, bold = false, spaceAfter = 60) => {
-    return new Paragraph({
-      spacing: { before: 40, after: spaceAfter },
-      children: [
-        new TextRun({
-          text,
-          bold,
-          size: 24, // 12pt
-          font: FONT_NAME,
-        }),
-      ],
-    });
-  };
-
-  // Helper for Code Lines (Normal, 10pt => sz 20)
-  const createCodeLine = (line: string) => {
-    return new Paragraph({
-      spacing: { before: 0, after: 0, line: 240 },
-      children: [
-        new TextRun({
-          text: line,
-          bold: false,
-          size: 20, // 10pt
-          font: FONT_NAME,
-        }),
-      ],
-    });
-  };
-
-  // 1. Experiment Header (Centered, Times New Roman, Bold, 16pt, Underlined matching template)
-  const cleanExpNum = params.experimentNo.replace(/^[-_\s]+/, "");
-  children.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 80, after: 180 },
-      children: [
-        new TextRun({
-          text: `Experiment ${cleanExpNum}`,
-          bold: true,
-          size: 32, // 16pt
-          font: FONT_NAME,
-          underline: { type: UnderlineType.SINGLE },
-        }),
-      ],
-    })
-  );
-
-  // Helper for 2-Column Metadata Cells: Label in Bold, Value in Normal (Regular)
-  const createMetaCell = (label: string, value: string, widthPercent: number) => {
-    return new TableCell({
-      width: { size: widthPercent, type: WidthType.PERCENTAGE },
-      children: [
-        new Paragraph({
-          spacing: { before: 30, after: 40 },
-          children: [
-            new TextRun({
-              text: `${label}: `,
-              bold: true,
-              size: 28, // 14pt
-              font: FONT_NAME,
-            }),
-            new TextRun({
-              text: value,
-              bold: false, // Normal (NOT bold)
-              size: 28, // 14pt
-              font: FONT_NAME,
-            }),
-          ],
-        }),
-      ],
-    });
-  };
-
-  // 2. Student & Course Meta Info (Clean 2-Column Table matching FSD_EXP_04.docx)
-  const noBorder = { style: BorderStyle.NONE, size: 0, color: "auto" };
-  const metaTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: noBorder,
-      bottom: noBorder,
-      left: noBorder,
-      right: noBorder,
-      insideHorizontal: noBorder,
-      insideVertical: noBorder,
-    },
-    rows: [
-      new TableRow({
-        children: [
-          createMetaCell("Student Name", params.studentName, 55),
-          createMetaCell("UID", params.uid, 45),
-        ],
-      }),
-      new TableRow({
-        children: [
-          createMetaCell("Branch", params.branch, 55),
-          createMetaCell("Section/Group", params.sectionGroup, 45),
-        ],
-      }),
-      new TableRow({
-        children: [
-          createMetaCell("Semester", params.semester, 55),
-          createMetaCell("Date of Performance", params.dateOfPerformance, 45),
-        ],
-      }),
-      new TableRow({
-        children: [
-          createMetaCell("Subject Name", params.subjectName, 55),
-          createMetaCell("Subject Code", params.subjectCode, 45),
-        ],
-      }),
-    ],
-  });
-
-  children.push(metaTable);
-
-  // Helper for Aim Lines: (Level): in Bold 12pt, description in Normal 12pt
-  const createAimLine = (level: "Easy" | "Medium" | "Hard", text: string) => {
-    return new Paragraph({
-      spacing: { before: 40, after: 60 },
-      children: [
-        new TextRun({
-          text: `(${level}): `,
-          bold: true,
-          size: 24, // 12pt
-          font: FONT_NAME,
-        }),
-        new TextRun({
-          text: text.trim(),
-          bold: false, // Normal (NOT bold)
-          size: 24, // 12pt
-          font: FONT_NAME,
-        }),
-      ],
-    });
-  };
-
-  // 3. AIM Section (Label Bold, Description Normal)
-  children.push(createHeading("AIM:", 240, 100));
-  children.push(createAimLine("Easy", params.aimEasy));
-  children.push(createAimLine("Medium", params.aimMedium));
-  children.push(createAimLine("Hard", params.aimHard));
-
-  // 4. OBJECTIVE Section (AI generated 5-6 points)
-  children.push(createHeading("OBJECTIVE:", 240, 100));
-  params.objectives.forEach((obj) => {
-    children.push(createBodyLine(obj, false, 60));
-  });
-
-  // 5. CODE Section (Clean code without comments)
-  children.push(createHeading("CODE:", 240, 100));
-  params.codeFiles.forEach((file) => {
-    // File label: #App.jsx
-    children.push(
-      new Paragraph({
-        spacing: { before: 180, after: 80 },
-        children: [
-          new TextRun({
-            text: `#${file.filename}`,
-            bold: true,
-            size: 28, // 14pt
-            font: FONT_NAME,
-          }),
-        ],
-      })
-    );
-
-    // Code lines in 10pt
-    const lines = file.cleanCode.split("\n");
-    lines.forEach((l) => {
-      children.push(createCodeLine(l));
-    });
-  });
-
-  // 6. OUTPUT Section
-  children.push(createHeading("OUTPUT:", 240, 100));
-  for (const out of params.outputItems) {
-    // Output label: #Dashboard:
-    children.push(
-      new Paragraph({
-        spacing: { before: 160, after: 80 },
-        children: [
-          new TextRun({
-            text: `#${out.heading.replace(/^#+/, "").replace(/:*$/, "")}:`,
-            bold: true,
-            size: 28, // 14pt
-            font: FONT_NAME,
-          }),
-        ],
-      })
-    );
-
-    // Embedded Image if present
-    const rawImage = out.base64DataUrl || (out.imageBytes && out.imageBytes.length > 0 ? out.imageBytes : null);
-    if (rawImage) {
-      try {
-        let imageBytes: Uint8Array;
-        if (typeof rawImage === "string") {
-          imageBytes = base64ToUint8Array(rawImage);
-        } else {
-          imageBytes = rawImage;
-        }
-
-        const detected = detectImageType(imageBytes);
-        const finalType: "png" | "jpg" | "gif" = detected;
-
-        // Proportional sizing up to 540pt width and 340pt height
-        let targetWidth = 520;
-        let targetHeight = 310;
-        if (out.width && out.height && out.width > 0 && out.height > 0) {
-          const maxWidth = 540;
-          const maxHeight = 340;
-          const ratio = out.width / out.height;
-          if (ratio > maxWidth / maxHeight) {
-            targetWidth = maxWidth;
-            targetHeight = Math.round(maxWidth / ratio);
-          } else {
-            targetHeight = Math.min(maxHeight, out.height);
-            targetWidth = Math.round(targetHeight * ratio);
-          }
-        }
-
-        children.push(
-          new Paragraph({
-            spacing: { before: 80, after: 200 },
-            children: [
-              new ImageRun({
-                data: imageBytes,
-                transformation: {
-                  width: targetWidth,
-                  height: targetHeight,
-                },
-                type: finalType,
-              }),
-            ],
-          })
-        );
-      } catch (imgErr) {
-        console.warn("Could not embed image run:", imgErr);
-      }
-    }
-  }
-
-  // 7. LEARNING OUTCOMES Section (AI generated 5-6 points)
-  children.push(createHeading("LEARNING OUTCOMES:", 260, 100));
-  params.learningOutcomes.forEach((out) => {
-    children.push(createBodyLine(out, false, 60));
-  });
-
 function base64ToUint8Array(base64: string): Uint8Array {
+  const cleanB64 = base64.replace(/^data:image\/\w+;base64,/, "").trim();
   if (typeof window !== "undefined" && typeof window.atob === "function") {
-    const binaryString = window.atob(base64);
+    const binaryString = window.atob(cleanB64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
     return bytes;
   }
-  const buf = Buffer.from(base64, "base64");
+  const buf = Buffer.from(cleanB64, "base64");
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
-  // Construct Document with official Chandigarh University header
-  const cuHeaderBytes = base64ToUint8Array(CU_HEADER_BASE64);
+export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
+  // 1. Load the official university base template (derived from FSD_EXP_03.docx)
+  const templateBytes = base64ToUint8Array(FSD_TEMPLATE_BASE64);
+  const zip = new JSZip();
+  await zip.loadAsync(templateBytes);
 
-  const doc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: 2420, // Accommodates header banner matching FSD_EXP_04.docx
-              bottom: 1000,
-              left: 1080,
-              right: 1440,
-              header: 360,
-            },
-          },
-        },
-        headers: {
-          default: new Header({
-            children: [
-              new Paragraph({
-                spacing: { before: 0, after: 100 },
-                children: [
-                  new ImageRun({
-                    data: cuHeaderBytes,
-                    transformation: {
-                      width: 594,
-                      height: 154,
-                    },
-                    type: "png",
-                  }),
-                ],
-              }),
-            ],
-          }),
-        },
-        children,
-      },
-    ],
+  // 2. Prepare output screenshots and wire relationships in document.xml.rels
+  const imageRels: string[] = [];
+  const imageEntries: { id: string; rId: string; cx: number; cy: number; heading: string }[] = [];
+
+  let outIndex = 0;
+  for (const out of params.outputItems) {
+    const rawImage = out.base64DataUrl || (out.imageBytes && out.imageBytes.length > 0 ? out.imageBytes : null);
+    if (!rawImage) continue;
+
+    let bytes: Uint8Array;
+    if (typeof rawImage === "string") {
+      bytes = base64ToUint8Array(rawImage);
+    } else {
+      bytes = rawImage;
+    }
+
+    if (!bytes || bytes.length === 0) continue;
+
+    const rId = `rIdOut${outIndex}`;
+    const filename = `output_${outIndex}.png`;
+
+    // Save image into zip
+    zip.file(`word/media/${filename}`, bytes);
+
+    // Track relationship
+    imageRels.push(
+      `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${filename}"/>`
+    );
+
+    // Proportional dimensions in EMUs (1 pt = 12700 EMUs, 1 px at 96dpi = 9525 EMUs)
+    // Target display width: ~6.2 inches (5670000 EMUs)
+    let targetWidthPx = 590;
+    let targetHeightPx = 330;
+
+    if (out.width && out.height && out.width > 0 && out.height > 0) {
+      const maxW = 590;
+      const maxH = 340;
+      const ratio = out.width / out.height;
+      if (ratio > maxW / maxH) {
+        targetWidthPx = maxW;
+        targetHeightPx = Math.round(maxW / ratio);
+      } else {
+        targetHeightPx = Math.min(maxH, out.height);
+        targetWidthPx = Math.round(targetHeightPx * ratio);
+      }
+    }
+
+    const cx = Math.round(targetWidthPx * 9525);
+    const cy = Math.round(targetHeightPx * 9525);
+
+    imageEntries.push({
+      id: `${outIndex + 1}`,
+      rId,
+      cx,
+      cy,
+      heading: out.heading,
+    });
+
+    outIndex++;
+  }
+
+  // Update word/_rels/document.xml.rels with image relationships
+  const baseRelsXml = await zip.files["word/_rels/document.xml.rels"].async("text");
+  // Strip any previous output image rels and insert new ones before </Relationships>
+  const cleanBaseRels = baseRelsXml
+    .replace(/<Relationship[^>]*Target="media\/output_[^>]*\/>/g, "")
+    .replace("</Relationships>", `${imageRels.join("")}</Relationships>`);
+  zip.file("word/_rels/document.xml.rels", cleanBaseRels);
+
+  // 3. Construct the clean document XML body identical to FSD_EXP_03.docx
+  const cleanExpNum = params.experimentNo.replace(/^[-_\s]+/, "");
+
+  let bodyXml = "";
+
+  // Title: Experiment [X] (Centered, Times New Roman Bold 16pt, single underlined)
+  bodyXml += `
+<w:p>
+  <w:pPr>
+    <w:pStyle w:val="Title"/>
+    <w:jc w:val="center"/>
+    <w:rPr>
+      <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/>
+      <w:b/>
+      <w:sz w:val="32"/>
+      <w:u w:val="single"/>
+    </w:rPr>
+  </w:pPr>
+  <w:r>
+    <w:rPr>
+      <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/>
+      <w:b/>
+      <w:sz w:val="32"/>
+      <w:u w:val="single"/>
+    </w:rPr>
+    <w:t>Experiment ${escapeXml(cleanExpNum)}</w:t>
+  </w:r>
+</w:p>
+`;
+
+  // Student Info (4 clean lines matching FSD_EXP_03.docx with pos="5780" tabs and left ind="360")
+  bodyXml += `
+<w:p>
+  <w:pPr>
+    <w:tabs><w:tab w:val="left" w:pos="5780"/></w:tabs>
+    <w:spacing w:before="159"/>
+    <w:ind w:left="360"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
+  </w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Student Name: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.studentName)}</w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>UID: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.uid)}</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr>
+    <w:tabs><w:tab w:val="left" w:pos="5780"/></w:tabs>
+    <w:spacing w:before="24"/>
+    <w:ind w:left="360"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
+  </w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Branch: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.branch)}</w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Section/Group: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.sectionGroup)}</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr>
+    <w:tabs><w:tab w:val="left" w:pos="5780"/></w:tabs>
+    <w:spacing w:before="24"/>
+    <w:ind w:left="360"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
+  </w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Semester: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.semester)}</w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Date of Performance: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.dateOfPerformance)}</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr>
+    <w:tabs><w:tab w:val="left" w:pos="5780"/></w:tabs>
+    <w:spacing w:before="24"/>
+    <w:ind w:left="360"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
+  </w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Name: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.subjectName)}</w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Code: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.subjectCode)}</w:t></w:r>
+</w:p>
+`;
+
+  // AIM Section (Headings and body text matching FSD_EXP_03.docx with non-bold body text)
+  bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>AIM:</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Easy): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimEasy.trim())}</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Medium): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimMedium.trim())}</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Hard): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimHard.trim())}</w:t></w:r>
+</w:p>
+`;
+
+  // OBJECTIVE Section (Native Word round bullet points matching FSD_EXP_03.docx: numId="5")
+  bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>OBJECTIVE:</w:t></w:r>
+</w:p>
+`;
+
+  for (const obj of params.objectives) {
+    bodyXml += `
+<w:p>
+  <w:pPr>
+    <w:pStyle w:val="ListParagraph"/>
+    <w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr>
+    <w:ind w:left="720" w:hanging="360"/>
+    <w:spacing w:before="40" w:after="60"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr>
+  </w:pPr>
+  <w:r>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr>
+    <w:t>${escapeXml(obj.trim())}</w:t>
+  </w:r>
+</w:p>
+`;
+  }
+
+  // CODE Section (Times New Roman, clean code without comments, 10pt)
+  bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>CODE:</w:t></w:r>
+</w:p>
+`;
+
+  for (const file of params.codeFiles) {
+    bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading2"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="200" w:after="80"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>#${escapeXml(file.filename)}</w:t></w:r>
+</w:p>
+`;
+    const lines = file.cleanCode.split("\n");
+    for (const l of lines) {
+      bodyXml += `
+<w:p>
+  <w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${escapeXml(l)}</w:t></w:r>
+</w:p>
+`;
+    }
+  }
+
+  // OUTPUT Section (Embedded screenshots with exact OpenXML pictures)
+  bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>OUTPUT:</w:t></w:r>
+</w:p>
+`;
+
+  for (let i = 0; i < params.outputItems.length; i++) {
+    const item = params.outputItems[i];
+    const headingClean = item.heading.replace(/^#+/, "").replace(/:*$/, "");
+
+    bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading3"/><w:spacing w:before="160" w:after="80"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>#${escapeXml(headingClean)}:</w:t></w:r>
+</w:p>
+`;
+
+    // Find the corresponding image entry
+    const imgEntry = imageEntries[i];
+    if (imgEntry) {
+      bodyXml += `
+<w:p>
+  <w:pPr><w:spacing w:before="80" w:after="200"/></w:pPr>
+  <w:r>
+    <w:drawing>
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="${imgEntry.cx}" cy="${imgEntry.cy}"/>
+        <wp:effectExtent l="0" t="0" r="0" b="0"/>
+        <wp:docPr id="${i + 100}" name="Picture ${i + 100}"/>
+        <wp:cNvGraphicFramePr>
+          <a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>
+        </wp:cNvGraphicFramePr>
+        <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:nvPicPr>
+                <pic:cNvPr id="${i + 1}" name=""/>
+                <pic:cNvPicPr/>
+              </pic:nvPicPr>
+              <pic:blipFill>
+                <a:blip r:embed="${imgEntry.rId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </pic:blipFill>
+              <pic:spPr>
+                <a:xfrm>
+                  <a:off x="0" y="0"/>
+                  <a:ext cx="${imgEntry.cx}" cy="${imgEntry.cy}"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>
+  </w:r>
+</w:p>
+`;
+    }
+  }
+
+  // LEARNING OUTCOMES Section (Native Word round bullet points matching FSD_EXP_03.docx: numId="5")
+  bodyXml += `
+<w:p>
+  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>LEARNING OUTCOMES:</w:t></w:r>
+</w:p>
+`;
+
+  for (const outcome of params.learningOutcomes) {
+    bodyXml += `
+<w:p>
+  <w:pPr>
+    <w:pStyle w:val="ListParagraph"/>
+    <w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr>
+    <w:ind w:left="720" w:hanging="360"/>
+    <w:spacing w:before="40" w:after="60"/>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr>
+  </w:pPr>
+  <w:r>
+    <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr>
+    <w:t>${escapeXml(outcome.trim())}</w:t>
+  </w:r>
+</w:p>
+`;
+  }
+
+  // Section Properties linking to the exact official Chandigarh University header (header2.xml)
+  bodyXml += `
+<w:sectPr w:rsidR="005C4A55" w:rsidRPr="00B56DC0">
+  <w:headerReference w:type="default" r:id="rId11"/>
+  <w:pgSz w:w="12240" w:h="15840"/>
+  <w:pgMar w:top="2420" w:right="1440" w:bottom="280" w:left="1080" w:header="0" w:footer="0" w:gutter="0"/>
+  <w:cols w:space="720"/>
+</w:sectPr>
+`;
+
+  // Wrap inside root document
+  const finalDocXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+  <w:body>
+    ${bodyXml}
+  </w:body>
+</w:document>`;
+
+  zip.file("word/document.xml", finalDocXml);
+
+  return await zip.generateAsync({
+    type: "blob",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
-
-  return await Packer.toBlob(doc);
 }
