@@ -288,7 +288,7 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
         }
 
         const detected = detectImageType(imageBytes);
-        const finalType = detected === "jpg" ? "jpeg" : detected;
+        const finalType: "png" | "jpg" | "gif" = detected;
 
         // Proportional sizing up to 540pt width and 340pt height
         let targetWidth = 520;
