@@ -79,11 +79,11 @@ Aim (Hard): ${params.aimHard || "Develop complete production-grade application"}
 ${codeContext ? `--- STUDENT SOURCE CODEBASE IMPLEMENTATION ---\n${codeContext}\n----------------------------------------------` : ""}
 
 CRITICAL REQUIREMENTS:
-- Thoroughly examine the codebase above. Reflect the actual code architecture, libraries, component patterns, state management, and algorithms used.
-- Generate BETWEEN 5 AND 7 bespoke "objectives" (decide dynamically whether 5, 6, or 7 best fits the complexity of this experiment):
+- Thoroughly examine the student's codebase and aim above. Reflect the actual code architecture, libraries, component patterns, state management, and algorithms used.
+- Generate BETWEEN 5 AND 7 bespoke "objectives" (independently evaluate whether 5, 6, or 7 pointers best represent the work done):
   - Every objective MUST start with an institutional phrase like "To understand...", "To implement...", "To design...", "To develop...", "To construct...", or "To evaluate...".
   - Ground each pointer in concrete technical details from the code and aim (e.g. React hooks, lifecycle, event handling, component composition, routing, data filtering, responsive CSS).
-- Generate BETWEEN 5 AND 7 bespoke "learningOutcomes" (matching the scope of the objectives):
+- Generate BETWEEN 5 AND 7 bespoke "learningOutcomes" (independently decide whether 5, 6, or 7 points are appropriate — NOTE: the number of objectives and learning outcomes DO NOT need to be identical):
   - Every learning outcome MUST start with an active action verb like "Implement...", "Design...", "Develop...", "Configure...", "Integrate...", "Construct...", or "Analyze...".
   - Focus on practical competencies mastered by building this specific codebase.
 

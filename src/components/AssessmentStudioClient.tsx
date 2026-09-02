@@ -155,24 +155,9 @@ export function AssessmentStudioClient({
     { id: "1", heading: "#Dashboard:", imageFile: null, previewUrl: null, bytes: null },
   ]);
 
-  // AI Generated Objectives & Learning Outcomes
-  const [objectives, setObjectives] = useState<string[]>([
-    "To understand and implement React components for displaying and managing application records.",
-    "To create reusable components for different sections and functionalities of the system.",
-    "To implement advanced frontend logic and state management for handling data and user interactions.",
-    "To implement forms and validation for adding and updating application state.",
-    "To implement interactive functionalities such as searching, filtering, editing, and deleting records.",
-    "To enhance understanding of component-based modular architecture and responsive user interfaces.",
-  ]);
-
-  const [learningOutcomes, setLearningOutcomes] = useState<string[]>([
-    "Implement React Router to create and navigate between multiple pages in a Single Page Application.",
-    "Create dynamic routes using route parameters to display individual record details.",
-    "Develop modular systems to add, display, update, and manage records using React components and state management.",
-    "Implement form handling and validation to collect and validate user information efficiently.",
-    "Implement live search and filtering to efficiently find and manage records based on relevant criteria.",
-    "Integrate multiple React functionalities such as routing, state management, forms, and filtering to develop a complete interactive frontend application.",
-  ]);
+  // AI Generated Objectives & Learning Outcomes (Synthesized on demand by Gemini from codebase + aim)
+  const [objectives, setObjectives] = useState<string[]>([]);
+  const [learningOutcomes, setLearningOutcomes] = useState<string[]>([]);
 
   const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -576,7 +561,27 @@ export function AssessmentStudioClient({
           setLearningOutcomes(aiRes.learningOutcomes);
         }
       } catch (aiErr) {
-        console.warn("AI generation fallback to standard curriculum pointers:", aiErr);
+        console.warn("AI generation fallback to dynamic pointers:", aiErr);
+      }
+
+      // Safe fallback (5 pointers) if Gemini was unreachable
+      if (finalObjectives.length === 0) {
+        finalObjectives = [
+          `To understand the core architecture and setup for ${aimEasy.slice(0, 50).trim()}...`,
+          `To create modular, reusable components and interface structures.`,
+          `To implement interactive functional workflows fulfilling ${aimMedium.slice(0, 50).trim()}...`,
+          `To apply state management and data handling mechanisms across application views.`,
+          `To construct and evaluate the complete solution satisfying ${aimHard.slice(0, 50).trim()}...`,
+        ];
+      }
+      if (finalLearningOutcomes.length === 0) {
+        finalLearningOutcomes = [
+          `Implement component-driven architecture adhering to modern development practices.`,
+          `Develop interactive user interfaces and structured layout flows.`,
+          `Manage reactive data state and component communication across views.`,
+          `Integrate practical functional modules satisfying lab specifications.`,
+          `Evaluate and test application behavior against experimental benchmarks.`,
+        ];
       }
 
       // Prepare Output items
@@ -1132,29 +1137,51 @@ export function AssessmentStudioClient({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="space-y-1.5 bg-black/40 p-3 rounded-2xl border border-white/10">
-                    <span className="font-bold text-white font-mono uppercase text-[11px] block">
-                      OBJECTIVE ({objectives.length} Pointers)
-                    </span>
-                    <ul className="space-y-1 text-slate-300 list-disc list-inside font-serif text-[11px] leading-relaxed">
-                      {objectives.map((obj, i) => (
-                        <li key={i}>{obj}</li>
-                      ))}
-                    </ul>
+                {objectives.length === 0 && learningOutcomes.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-black/40 border border-white/10 text-center space-y-2.5">
+                    <Sparkles className="w-6 h-6 text-purple-400 mx-auto animate-pulse" />
+                    <p className="text-white font-medium text-xs">
+                      No Objectives or Learning Outcomes generated yet.
+                    </p>
+                    <p className="text-slate-400 text-[11px] max-w-lg mx-auto leading-relaxed">
+                      Upload your codebase zip above and enter your Aim. Then click &ldquo;✨ Generate with Gemini AI&rdquo; to dynamically analyze the code and synthesize between 5 and 7 bespoke pointers (determined independently by Gemini).
+                    </p>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1.5 bg-black/40 p-3.5 rounded-2xl border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white font-mono uppercase text-[11px] block">
+                          OBJECTIVE ({objectives.length} POINTERS)
+                        </span>
+                        <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                          {objectives.length} Points
+                        </span>
+                      </div>
+                      <ul className="space-y-1.5 text-slate-300 list-disc list-inside font-serif text-[11px] leading-relaxed pt-1">
+                        {objectives.map((obj, i) => (
+                          <li key={i}>{obj}</li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="space-y-1.5 bg-black/40 p-3 rounded-2xl border border-white/10">
-                    <span className="font-bold text-white font-mono uppercase text-[11px] block">
-                      LEARNING OUTCOMES ({learningOutcomes.length} Pointers)
-                    </span>
-                    <ul className="space-y-1 text-slate-300 list-disc list-inside font-serif text-[11px] leading-relaxed">
-                      {learningOutcomes.map((out, i) => (
-                        <li key={i}>{out}</li>
-                      ))}
-                    </ul>
+                    <div className="space-y-1.5 bg-black/40 p-3.5 rounded-2xl border border-white/10">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white font-mono uppercase text-[11px] block">
+                          LEARNING OUTCOMES ({learningOutcomes.length} POINTERS)
+                        </span>
+                        <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                          {learningOutcomes.length} Points
+                        </span>
+                      </div>
+                      <ul className="space-y-1.5 text-slate-300 list-disc list-inside font-serif text-[11px] leading-relaxed pt-1">
+                        {learningOutcomes.map((out, i) => (
+                          <li key={i}>{out}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Final Submit & Download Action */}
