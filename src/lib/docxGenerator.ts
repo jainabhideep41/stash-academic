@@ -94,13 +94,13 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     );
 
     // Proportional dimensions in EMUs (1 pt = 12700 EMUs, 1 px at 96dpi = 9525 EMUs)
-    // Target display width: ~6.2 inches (5670000 EMUs)
-    let targetWidthPx = 590;
-    let targetHeightPx = 330;
+    // Display width: 6.2 inches (5890000 EMUs)
+    let targetWidthPx = 600;
+    let targetHeightPx = 340;
 
     if (out.width && out.height && out.width > 0 && out.height > 0) {
-      const maxW = 590;
-      const maxH = 340;
+      const maxW = 600;
+      const maxH = 360;
       const ratio = out.width / out.height;
       if (ratio > maxW / maxH) {
         targetWidthPx = maxW;
@@ -127,7 +127,6 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
 
   // Update word/_rels/document.xml.rels with image relationships
   const baseRelsXml = await zip.files["word/_rels/document.xml.rels"].async("text");
-  // Strip any previous output image rels and insert new ones before </Relationships>
   const cleanBaseRels = baseRelsXml
     .replace(/<Relationship[^>]*Target="media\/output_[^>]*\/>/g, "")
     .replace("</Relationships>", `${imageRels.join("")}</Relationships>`);
@@ -163,7 +162,7 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
 </w:p>
 `;
 
-  // Student Info (4 clean lines matching FSD_EXP_03.docx with pos="5780" tabs and left ind="360")
+  // Student Info (4 clean lines matching FSD_EXP_03.docx with pos="5780" tabs, left ind="360", and explicit xml:space="preserve" spaces)
   bodyXml += `
 <w:p>
   <w:pPr>
@@ -172,10 +171,12 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     <w:ind w:left="360"/>
     <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
   </w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Student Name: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Student Name:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.studentName)}</w:t></w:r>
   <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>UID: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>UID:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.uid)}</w:t></w:r>
 </w:p>
 
@@ -186,10 +187,12 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     <w:ind w:left="360"/>
     <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
   </w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Branch: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Branch:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.branch)}</w:t></w:r>
   <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Section/Group: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Section/Group:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.sectionGroup)}</w:t></w:r>
 </w:p>
 
@@ -200,10 +203,12 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     <w:ind w:left="360"/>
     <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
   </w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Semester: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Semester:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.semester)}</w:t></w:r>
   <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Date of Performance: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Date of Performance:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.dateOfPerformance)}</w:t></w:r>
 </w:p>
 
@@ -214,10 +219,12 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     <w:ind w:left="360"/>
     <w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr>
   </w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Name: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Name:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.subjectName)}</w:t></w:r>
   <w:r><w:rPr><w:sz w:val="28"/></w:rPr><w:tab/></w:r>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Code: </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Subject Code:</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${escapeXml(params.subjectCode)}</w:t></w:r>
 </w:p>
 `;
@@ -225,25 +232,28 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
   // AIM Section (Headings and body text matching FSD_EXP_03.docx with non-bold body text)
   bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>AIM:</w:t></w:r>
 </w:p>
 
 <w:p>
   <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Easy): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Easy):</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimEasy.trim())}</w:t></w:r>
 </w:p>
 
 <w:p>
   <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Medium): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Medium):</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimMedium.trim())}</w:t></w:r>
 </w:p>
 
 <w:p>
   <w:pPr><w:pStyle w:val="BodyText"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="80" w:after="80"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Hard): </w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>(Hard):</w:t></w:r>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t xml:space="preserve"> </w:t></w:r>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>${escapeXml(params.aimHard.trim())}</w:t></w:r>
 </w:p>
 `;
@@ -251,7 +261,7 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
   // OBJECTIVE Section (Native Word round bullet points matching FSD_EXP_03.docx: numId="5")
   bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>OBJECTIVE:</w:t></w:r>
 </w:p>
 `;
@@ -274,18 +284,18 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
 `;
   }
 
-  // CODE Section (Times New Roman, clean code without comments, 10pt)
+  // Page break before CODE so Page 1 remains a pristine, self-contained overview sheet and CODE begins cleanly at top of Page 2
   bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>CODE:</w:t></w:r>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:br w:type="page"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>CODE:</w:t></w:r>
 </w:p>
 `;
 
   for (const file of params.codeFiles) {
     bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading2"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="200" w:after="80"/><w:ind w:left="426"/></w:pPr>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading2"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="200" w:after="80"/><w:ind w:left="426"/></w:pPr>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>#${escapeXml(file.filename)}</w:t></w:r>
 </w:p>
 `;
@@ -293,18 +303,18 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     for (const l of lines) {
       bodyXml += `
 <w:p>
-  <w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr></w:pPr>
+  <w:pPr><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:ind w:left="426"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr></w:pPr>
   <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${escapeXml(l)}</w:t></w:r>
 </w:p>
 `;
     }
   }
 
-  // OUTPUT Section (Embedded screenshots with exact OpenXML pictures)
+  // OUTPUT Section (Exact match with FSD_EXP_03.docx: BodyText without left ind, perfectly vertically aligned with headings and images)
   bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>OUTPUT:</w:t></w:r>
+  <w:pPr><w:keepNext/><w:pStyle w:val="BodyText"/><w:spacing w:before="240" w:after="240"/><w:rPr><w:b/><w:bCs/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:pPr>
+  <w:r><w:br w:type="page"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:bCs/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr><w:t>OUTPUT:</w:t></w:r>
 </w:p>
 `;
 
@@ -314,8 +324,8 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
 
     bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading3"/><w:spacing w:before="160" w:after="80"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>#${escapeXml(headingClean)}:</w:t></w:r>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading3"/><w:spacing w:before="160" w:after="120"/><w:rPr><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:pPr>
+  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr><w:t>#${escapeXml(headingClean)}:</w:t></w:r>
 </w:p>
 `;
 
@@ -324,7 +334,7 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     if (imgEntry) {
       bodyXml += `
 <w:p>
-  <w:pPr><w:spacing w:before="80" w:after="200"/></w:pPr>
+  <w:pPr><w:pStyle w:val="BodyText"/><w:spacing w:before="60" w:after="240"/><w:rPr><w:b/></w:rPr></w:pPr>
   <w:r>
     <w:drawing>
       <wp:inline distT="0" distB="0" distL="0" distR="0">
@@ -363,11 +373,11 @@ export async function generateFsdDocx(params: FsdDocxParams): Promise<Blob> {
     }
   }
 
-  // LEARNING OUTCOMES Section (Native Word round bullet points matching FSD_EXP_03.docx: numId="5")
+  // LEARNING OUTCOMES Section (Clean concluding section starting on its own page, exactly matching FSD_EXP_03.docx)
   bodyXml += `
 <w:p>
-  <w:pPr><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
-  <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>LEARNING OUTCOMES:</w:t></w:r>
+  <w:pPr><w:keepNext/><w:pStyle w:val="Heading1"/><w:tabs><w:tab w:val="left" w:pos="426"/></w:tabs><w:spacing w:before="240" w:after="120"/><w:ind w:left="426"/></w:pPr>
+  <w:r><w:br w:type="page"/><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>LEARNING OUTCOMES:</w:t></w:r>
 </w:p>
 `;
 
