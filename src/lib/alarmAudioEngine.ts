@@ -1,5 +1,5 @@
 // Web Audio API Synthesizer Alarm Engine (Phone Wake-Up Style)
-// Generates multiple distinct realistic phone alarm ringtones without external MP3 assets
+// Features: Custom Ringtones, Hardware Vibration API, Screen WakeLock API, and MediaSession Integration
 
 export type AlarmTone = "digital" | "radar" | "siren" | "gentle" | "arcade";
 
@@ -47,6 +47,8 @@ class AlarmAudioEngine {
   private audioCtx: AudioContext | null = null;
   private isPlaying: boolean = false;
   private intervalId: NodeJS.Timeout | number | null = null;
+  private vibrationIntervalId: NodeJS.Timeout | number | null = null;
+  private wakeLockSentinel: any = null;
   private currentTone: AlarmTone = "digital";
 
   // Initialize or resume AudioContext
@@ -68,6 +70,68 @@ class AlarmAudioEngine {
     }
   }
 
+  // Request Screen WakeLock so phone screen doesn't turn off during alarm
+  private async acquireWakeLock(): Promise<void> {
+    if (typeof window === "undefined" || !("wakeLock" in navigator)) return;
+    try {
+      this.wakeLockSentinel = await (navigator as any).wakeLock.request("screen");
+    } catch (e) {
+      console.warn("WakeLock request failed:", e);
+    }
+  }
+
+  private releaseWakeLock(): void {
+    try {
+      if (this.wakeLockSentinel) {
+        this.wakeLockSentinel.release();
+        this.wakeLockSentinel = null;
+      }
+    } catch {}
+  }
+
+  // Trigger Hardware Vibration API (Intense pulsing vibration to wake user even if silent)
+  private startHardwareVibration(): void {
+    if (typeof window === "undefined" || !("vibrate" in navigator)) return;
+    try {
+      // Pulsing pattern: Vibrate 600ms, pause 200ms, vibrate 600ms, pause 200ms, vibrate 1000ms
+      const pattern = [600, 200, 600, 200, 1000];
+      navigator.vibrate(pattern);
+
+      this.vibrationIntervalId = setInterval(() => {
+        if (this.isPlaying && "vibrate" in navigator) {
+          navigator.vibrate(pattern);
+        }
+      }, 2800);
+    } catch (e) {
+      console.warn("Vibration API error:", e);
+    }
+  }
+
+  private stopHardwareVibration(): void {
+    if (this.vibrationIntervalId) {
+      clearInterval(this.vibrationIntervalId as any);
+      this.vibrationIntervalId = null;
+    }
+    if (typeof window !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(0);
+      } catch {}
+    }
+  }
+
+  // Setup MediaSession for background audio claim
+  private setupMediaSession(tone: AlarmTone): void {
+    if (typeof window === "undefined" || !("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "⏰ WAKE-UP ALARM RINGING",
+        artist: "Stash Academic Hub",
+        album: `Alarm Tone: ${tone}`,
+      });
+      navigator.mediaSession.playbackState = "playing";
+    } catch {}
+  }
+
   // 1. Classic Digital Beep (4 rapid bursts)
   private playDigitalBurst(): void {
     if (!this.audioCtx) return;
@@ -85,7 +149,7 @@ class AlarmAudioEngine {
       osc.frequency.setValueAtTime(freq, startTime);
 
       oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.exponentialRampToValueAtTime(0.65, startTime + 0.01);
+      oscGain.gain.exponentialRampToValueAtTime(0.7, startTime + 0.01);
       oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + burstDuration);
 
       osc.connect(oscGain);
@@ -100,7 +164,7 @@ class AlarmAudioEngine {
   private playRadarBurst(): void {
     if (!this.audioCtx) return;
     const now = this.audioCtx.currentTime;
-    const notes = [659.25, 880.0, 1318.51]; // E5, A5, E6
+    const notes = [659.25, 880.0, 1318.51];
 
     notes.forEach((freq, idx) => {
       const startTime = now + idx * 0.12;
@@ -111,7 +175,7 @@ class AlarmAudioEngine {
       osc.frequency.setValueAtTime(freq, startTime);
 
       oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.6, startTime + 0.015);
+      oscGain.gain.linearRampToValueAtTime(0.65, startTime + 0.015);
       oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
 
       osc.connect(oscGain);
@@ -135,8 +199,8 @@ class AlarmAudioEngine {
     osc.frequency.linearRampToValueAtTime(550, now + 0.5);
 
     oscGain.gain.setValueAtTime(0.01, now);
-    oscGain.gain.linearRampToValueAtTime(0.7, now + 0.05);
-    oscGain.gain.linearRampToValueAtTime(0.7, now + 0.45);
+    oscGain.gain.linearRampToValueAtTime(0.75, now + 0.05);
+    oscGain.gain.linearRampToValueAtTime(0.75, now + 0.45);
     oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
     osc.connect(oscGain);
@@ -146,11 +210,11 @@ class AlarmAudioEngine {
     osc.stop(now + 0.55);
   }
 
-  // 4. Gentle Morning (Major 7th soft ambient chime)
+  // 4. Gentle Morning (Major 7th soft harmonic chime)
   private playGentleBurst(): void {
     if (!this.audioCtx) return;
     const now = this.audioCtx.currentTime;
-    const notes = [440, 554.37, 659.25, 830.61]; // A major 7th chord (A4, C#5, E5, G#5)
+    const notes = [440, 554.37, 659.25, 830.61];
 
     notes.forEach((freq, idx) => {
       const startTime = now + idx * 0.09;
@@ -161,7 +225,7 @@ class AlarmAudioEngine {
       osc.frequency.setValueAtTime(freq, startTime);
 
       oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.45, startTime + 0.03);
+      oscGain.gain.linearRampToValueAtTime(0.5, startTime + 0.03);
       oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
 
       osc.connect(oscGain);
@@ -187,7 +251,7 @@ class AlarmAudioEngine {
       osc.frequency.setValueAtTime(freq, startTime);
 
       oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.4, startTime + 0.01);
+      oscGain.gain.linearRampToValueAtTime(0.45, startTime + 0.01);
       oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.07);
 
       osc.connect(oscGain);
@@ -219,12 +283,17 @@ class AlarmAudioEngine {
     }
   }
 
-  // Start repeating alarm with chosen tone
+  // Start repeating alarm with chosen tone, hardware vibration, and screen wakelock
   public startAlarm(tone: AlarmTone = "digital"): void {
     if (this.isPlaying) return;
     this.unlockAudio();
     this.isPlaying = true;
     this.currentTone = tone;
+
+    // Acquire Screen WakeLock & Hardware Vibration
+    this.acquireWakeLock();
+    this.startHardwareVibration();
+    this.setupMediaSession(tone);
 
     this.playTonePattern(this.currentTone);
 
@@ -236,10 +305,13 @@ class AlarmAudioEngine {
     }, intervalMs);
   }
 
-  // Preview a single burst of a chosen tone without continuous loop
+  // Preview a single burst of a chosen tone
   public previewTone(tone: AlarmTone): void {
     this.unlockAudio();
     this.playTonePattern(tone);
+    if (typeof window !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
   }
 
   // Stop / Turn off alarm
@@ -249,9 +321,17 @@ class AlarmAudioEngine {
       clearInterval(this.intervalId as any);
       this.intervalId = null;
     }
+    this.stopHardwareVibration();
+    this.releaseWakeLock();
+
+    if (typeof window !== "undefined" && "mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.playbackState = "none";
+      } catch {}
+    }
   }
 
-  // Play celebration / success chime when user solves the typing challenge
+  // Play celebration / success chime when user solves typing challenge
   public playSuccessChime(): void {
     this.unlockAudio();
     if (!this.audioCtx) return;

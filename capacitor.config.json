@@ -1,0 +1,22 @@
+{
+  "appId": "com.stash.academic",
+  "appName": "Stash Academic",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://stash-academic.vercel.app",
+    "cleartext": true
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_alarm",
+      "iconColor": "#A855F7",
+      "sound": "alarm_sound.wav"
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}
