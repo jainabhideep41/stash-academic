@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import { GlobalAlarmProvider } from "./GlobalAlarmProvider";
 import { AppUpdateModal } from "./AppUpdateModal";
+import { NativeMobileTabBar } from "./NativeMobileTabBar";
 import { CURRENT_APP_VERSION } from "@/lib/appVersion";
+import { NativeMobileEngine } from "@/lib/nativeMobileEngine";
 
 interface AppLayoutShellProps {
   children: React.ReactNode;
@@ -33,6 +35,11 @@ interface AppLayoutShellProps {
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Initialize native status bar, splash screen, and hardware back button
+  React.useEffect(() => {
+    NativeMobileEngine.init();
+  }, []);
 
   const navItems = [
     {
@@ -269,10 +276,13 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
           </header>
 
           {/* Page Content Body */}
-          <main className="p-4 sm:p-6 lg:p-8 flex-1">{children}</main>
+          <main className="p-4 sm:p-6 lg:p-8 flex-1 pb-28 md:pb-8">{children}</main>
 
           {/* In-App Auto-Update Modal & Banners */}
           <AppUpdateModal />
+
+          {/* Native Mobile Bottom Tab Bar */}
+          <NativeMobileTabBar />
 
         </div>
 

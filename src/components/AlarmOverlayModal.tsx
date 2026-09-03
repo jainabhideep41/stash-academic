@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { AcademicTask } from "@/lib/taskAlarmStorage";
 import { alarmAudio } from "@/lib/alarmAudioEngine";
+import { HapticEngine } from "@/lib/hapticEngine";
 import {
   Bell,
   AlarmClock,
@@ -88,6 +89,7 @@ export function AlarmOverlayModal({
   // Handle Turn Off Alarm
   const handleTurnOff = (markAsCompleted = false) => {
     if (!isChallengeSolved) return;
+    HapticEngine.trigger("success");
     alarmAudio.playSuccessChime();
     alarmAudio.stopAlarm();
     onDismiss(task.id, markAsCompleted);
@@ -95,6 +97,7 @@ export function AlarmOverlayModal({
 
   // Handle Snooze
   const handleSnooze = (minutes: number) => {
+    HapticEngine.trigger("medium");
     alarmAudio.stopAlarm();
     onSnooze(task.id, minutes);
   };
@@ -113,7 +116,10 @@ export function AlarmOverlayModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 select-none">
+    <div
+      data-alarm-overlay="active"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200 select-none"
+    >
       
       {/* Intense pulsing perimeter aura like phone emergency alarm */}
       <div className="absolute inset-0 border-4 sm:border-8 border-rose-500/60 animate-pulse pointer-events-none shadow-[inset_0_0_80px_rgba(244,63,94,0.4)]" />

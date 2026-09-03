@@ -1,4 +1,4 @@
-name: Build & Release Android APK (Enterprise Security Update)
+name: Build & Release Android APK (Native App Experience)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Secure Android APK (OWASP Hardened & DND Bypass)
+    name: Build Native Android APK (Haptics, TabBar & Back Navigation)
     runs-on: ubuntu-latest
 
     steps:
@@ -49,36 +49,36 @@ jobs:
       - name: 📦 Prepare APK Release Binary
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-Alarm-v1.1.0-Security.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.2.0-Native.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Stash-Academic-Alarm-v1.1.0-Security-APK
-          path: output_apk/Stash-Academic-Alarm-v1.1.0-Security.apk
+          name: Stash-Academic-v1.2.0-Native-APK
+          path: output_apk/Stash-Academic-v1.2.0-Native.apk
           if-no-files-found: error
 
-      - name: 🚀 Publish GitHub Release v1.1.0-security
+      - name: 🚀 Publish GitHub Release v1.2.0-native
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.1.0-security
-          name: "Stash Academic Mobile v1.1.0 (Enterprise Security & App Store Hardening)"
+          tag_name: v1.2.0-native
+          name: "Stash Academic Mobile v1.2.0 (True Native App Experience)"
           body: |
-            ## 🛡️ Stash Academic Mobile APK & Web Security Release (v1.1.0)
+            ## 📱 Stash Academic Mobile v1.2.0 (True Native App Experience)
             
-            This release delivers app-store grade security hardening, OWASP MASVS compliance, and encrypted storage protection.
+            Eliminates all browser/website behaviors and delivers a genuine native app feel!
             
-            ### 🔐 Security & Architecture Enhancements:
-            - **🚫 Disabled Cleartext Traffic & Strict TLS 1.3 Pinning**: Custom Android `network_security_config.xml` disallowing unencrypted HTTP calls.
-            - **🛡️ OWASP MASVS Anti-Extraction (`allowBackup="false"`)**: Prevents ADB memory dumps and unauthorized token extraction.
-            - **🔐 Enterprise HTTP Security Headers**: HSTS (`max-age=63072000`), X-Frame-Options (`DENY`), X-Content-Type-Options (`nosniff`), strict Referrer & Permissions policies.
-            - **🔑 Client-Side AES-GCM Encryption**: Sensitive credentials and API keys stored in `localStorage` are encrypted using the Web Crypto API.
-            - **🚨 Hardware DND & Silent Bypass**: Dedicated Android `STREAM_ALARM` + `setBypassDnd(true)` channel with lockscreen wakeup intent.
-            - **🔒 Mandatory Anti-Sleep Typing Challenge**: Unbreakable acknowledgment challenge to dismiss alarms.
+            ### 🚀 What's New in v1.2.0:
+            - **📱 Native Mobile Bottom Tab Bar**: Replaces web drawers with an app-native bottom navigation bar (Dashboard, Assessment, Vault, Notes, Profile).
+            - **📳 Native Micro-Haptics Engine**: Tactile vibration feedback on button presses, tab switches, alarm dismissals, and snooze.
+            - **🔙 Native Android Hardware Back Button Handling**: Closes modals, navigates tabs smoothly, prevents accidental exits with double-tap exit verification, and keeps alarms ringing until solved.
+            - **✨ Zero Web Rubber-Banding & Bounce**: Blocked browser pull-to-refresh, removed tap highlight flashes, and locked zoom.
+            - **🕶️ Immersive Dark Status Bar & Splash Screen**: Seamless full-screen AMOLED black integration.
+            - **🛡️ OWASP MASVS App Store Security**: `allowBackup="false"`, strict TLS 1.3 pinning, and AES-GCM encrypted storage.
             
             ### 📥 Download & Install:
-            Download `Stash-Academic-Alarm-v1.1.0-Security.apk` below, tap to install on your Android device.
-          files: output_apk/Stash-Academic-Alarm-v1.1.0-Security.apk
+            Download `Stash-Academic-v1.2.0-Native.apk` below, tap to install on your phone.
+          files: output_apk/Stash-Academic-v1.2.0-Native.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

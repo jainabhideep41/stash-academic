@@ -8,13 +8,37 @@
   }
 }
 
-body {
+/* Native App Mobile Feel: Eliminate web elastic bounce & tap highlights */
+html, body {
   font-family: var(--font-sans);
-  background-color: #02040a;
+  background-color: #000000;
   color: #f5f5f7;
-  overflow-x: hidden;
   letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Prevent browser pull-to-refresh & rubber-banding */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  
+  /* Disable browser tap highlight rectangle */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Native touch manipulation & prevent unwanted zooming */
+  touch-action: manipulation;
+  
+  /* Prevent callout popup on long press */
+  -webkit-touch-callout: none;
+  
+  /* App-like unselectable UI elements */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Allow text selection in code, text areas, and inputs */
+input, textarea, [contenteditable="true"], pre, code, .selectable-text {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -24,6 +48,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/* Native Mobile Safe Area Inset Utility */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 16px);
 }
 
 /* Apple Pro Gradient Headlines */
@@ -97,7 +129,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: #02040a;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {

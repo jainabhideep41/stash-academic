@@ -3,20 +3,38 @@
   "appName": "Stash Academic",
   "webDir": "public",
   "bundledWebRuntime": false,
+  "backgroundColor": "#000000",
   "server": {
     "url": "https://stash-academic.vercel.app",
-    "cleartext": true
+    "cleartext": false
   },
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_stat_alarm",
       "iconColor": "#A855F7",
       "sound": "alarm_sound.wav"
-    }
+    },
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "launchAutoHide": true,
+      "backgroundColor": "#000000",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "DARK",
+      "backgroundColor": "#000000"
+    },
+    "Haptics": {}
   },
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#000000"
   }
 }

@@ -150,6 +150,7 @@ export function AppUpdateModal() {
                 </div>
               </div>
               <button
+                data-modal-close="true"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 rounded-xl hover:bg-neutral-900 text-neutral-400 hover:text-white transition"
               >
