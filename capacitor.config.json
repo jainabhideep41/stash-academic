@@ -1,7 +1,7 @@
 {
   "appId": "com.stash.academic",
   "appName": "Stash Academic",
-  "webDir": "out",
+  "webDir": "public",
   "bundledWebRuntime": false,
   "server": {
     "url": "https://stash-academic.vercel.app",
