@@ -553,13 +553,13 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 </button>
 
                 <a
-                  href={`${GITHUB_RELEASES_URL}/download/v1.0.0-apk/Stash-Academic-Alarm-v1.0.apk`}
+                  href={`${GITHUB_RELEASES_URL}/download/v1.3.0-mobile-ui/Stash-Academic-v1.3.0-Mobile.apk`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5 text-black" />
-                  <span>Download Latest APK</span>
+                  <span>Download v1.3.0 APK</span>
                 </a>
               </div>
             </div>
