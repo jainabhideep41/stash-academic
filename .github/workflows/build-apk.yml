@@ -33,7 +33,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: 📦 Install Node Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: 🔄 Sync Capacitor Android
         run: npx cap sync android
