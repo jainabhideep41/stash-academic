@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { AcademicTask, getAlarmAckMode, AlarmAckMode } from "@/lib/taskAlarmStorage";
+import { AcademicTask, getAlarmAckMode, AlarmAckMode, getVoiceAuthPhrase } from "@/lib/taskAlarmStorage";
 import { alarmAudio } from "@/lib/alarmAudioEngine";
 import { voiceAssistant } from "@/lib/voiceAssistantEngine";
 import { HapticEngine } from "@/lib/hapticEngine";
@@ -148,10 +148,12 @@ export function AlarmOverlayModal({
 
         const cleanSpoken = text.toLowerCase().trim();
         const cleanTarget = targetPhrase.toLowerCase().trim();
+        const cleanPasscode = getVoiceAuthPhrase().toLowerCase().trim();
 
-        // Check if spoken text matches target phrase OR generic confirmation phrases
+        // Check if spoken text matches target phrase, custom voice passcode, or standard confirmations
         if (
           cleanSpoken.includes(cleanTarget) ||
+          cleanSpoken.includes(cleanPasscode) ||
           cleanSpoken.includes("i am awake") ||
           cleanSpoken.includes("i'm awake") ||
           cleanSpoken.includes("i am ready") ||

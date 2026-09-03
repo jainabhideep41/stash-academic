@@ -11,8 +11,8 @@ export interface AcademicTask {
   dueTime: string; // HH:MM (24h)
   priority: "low" | "medium" | "high" | "critical";
   category: "assignment" | "exam" | "lab" | "project" | "study" | "custom";
-  alarmTone?: AlarmTone; // Chosen phone ringtone sound
-  challengeText: string; // The phrase the user MUST type or speak to turn off the alarm
+  alarmTone?: AlarmTone; // Chosen phone ringtone sound (60+ options)
+  challengeText: string; // The phrase the user MUST type or speak to disarm the alarm
   status: "pending" | "snoozed" | "completed" | "dismissed";
   snoozeUntil?: number | null; // epoch ms
   lastTriggeredAt?: number | null;
@@ -24,6 +24,9 @@ export interface AcademicTask {
 const STORAGE_KEY = "stash_academic_tasks_v1";
 const DEFAULT_TONE_KEY = "stash_default_alarm_tone";
 const ALARM_ACK_MODE_KEY = "stash_alarm_ack_mode";
+const VOICE_AUTH_PHRASE_KEY = "stash_voice_auth_phrase";
+
+export const DEFAULT_VOICE_AUTH_PHRASE = "I am awake and ready to study";
 
 // Helper to get formatted local date string YYYY-MM-DD
 export function getTodayDateString(offsetDays = 0): string {
@@ -49,14 +52,12 @@ export function getCurrentTimeString(offsetMinutes = 0): string {
 }
 
 export function getDefaultAlarmTone(): AlarmTone {
-  if (typeof window === "undefined") return "digital";
+  if (typeof window === "undefined") return "samsung_horizon";
   try {
     const saved = localStorage.getItem(DEFAULT_TONE_KEY) as AlarmTone;
-    if (saved && ["digital", "radar", "siren", "gentle", "arcade"].includes(saved)) {
-      return saved;
-    }
+    if (saved) return saved;
   } catch {}
-  return "digital";
+  return "samsung_horizon";
 }
 
 export function setDefaultAlarmTone(tone: AlarmTone): void {
@@ -85,6 +86,24 @@ export function setAlarmAckMode(mode: AlarmAckMode): void {
   } catch {}
 }
 
+export function getVoiceAuthPhrase(): string {
+  if (typeof window === "undefined") return DEFAULT_VOICE_AUTH_PHRASE;
+  try {
+    const saved = localStorage.getItem(VOICE_AUTH_PHRASE_KEY);
+    if (saved && saved.trim()) return saved.trim();
+  } catch {}
+  return DEFAULT_VOICE_AUTH_PHRASE;
+}
+
+export function setVoiceAuthPhrase(phrase: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const clean = phrase.trim() || DEFAULT_VOICE_AUTH_PHRASE;
+    localStorage.setItem(VOICE_AUTH_PHRASE_KEY, clean);
+    window.dispatchEvent(new CustomEvent("stash_voice_auth_updated", { detail: clean }));
+  } catch {}
+}
+
 // Sample default tasks to showcase when user first lands
 export const DEFAULT_TASKS: AcademicTask[] = [
   {
@@ -95,7 +114,7 @@ export const DEFAULT_TASKS: AcademicTask[] = [
     dueTime: getCurrentTimeString(30),
     priority: "high",
     category: "assignment",
-    alarmTone: "radar",
+    alarmTone: "samsung_horizon",
     challengeText: "I am awake and working on Dynamic Programming Assignment",
     status: "pending",
     voiceAlarmEnabled: true,
@@ -104,67 +123,99 @@ export const DEFAULT_TASKS: AcademicTask[] = [
   },
   {
     id: "task-2",
-    title: "Database Systems Mid-Term Revision",
-    description: "Review B-Trees, Normalization (1NF to BCNF), and ACID transactions.",
-    dueDate: getTodayDateString(1),
-    dueTime: "09:00",
+    title: "Operating Systems: Kernel Threads Lab Prep",
+    description: "Review mutex synchronization and POSIX pthread code in file vault.",
+    dueDate: getTodayDateString(0),
+    dueTime: getCurrentTimeString(120),
     priority: "critical",
-    category: "exam",
-    alarmTone: "siren",
-    challengeText: "I am ready for the Database Systems exam",
+    category: "lab",
+    alarmTone: "xiaomi_fireflies",
+    challengeText: "I will complete the OS Kernel Thread lab today",
     status: "pending",
     voiceAlarmEnabled: true,
-    durationSeconds: 90,
+    durationSeconds: 180,
     createdAt: new Date().toISOString(),
   },
   {
     id: "task-3",
-    title: "Computer Networks Wireshark Lab Report",
-    description: "Analyze TCP 3-way handshake and TLS certificates.",
-    dueDate: getTodayDateString(2),
-    dueTime: "23:59",
-    priority: "medium",
-    category: "lab",
-    alarmTone: "digital",
-    challengeText: "I am submitting the Computer Networks Lab Report",
+    title: "Database Systems: Mid-Term Examination",
+    description: "B+ Tree indices, SQL subqueries, and ACID transaction isolation levels.",
+    dueDate: getTodayDateString(1),
+    dueTime: "09:00",
+    priority: "critical",
+    category: "exam",
+    alarmTone: "nuclear_siren",
+    challengeText: "Ready for Mid-Term exam with maximum focus",
     status: "pending",
     voiceAlarmEnabled: true,
-    durationSeconds: 90,
+    durationSeconds: 300,
     createdAt: new Date().toISOString(),
   },
 ];
 
 // Load tasks from LocalStorage
 export function loadTasks(): AcademicTask[] {
-  if (typeof window === "undefined") return DEFAULT_TASKS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      saveTasks(DEFAULT_TASKS);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_TASKS));
       return DEFAULT_TASKS;
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return DEFAULT_TASKS;
-  } catch {
-    return DEFAULT_TASKS;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Failed to load tasks from local storage:", e);
+    return [];
   }
 }
 
-// Save tasks to LocalStorage and dispatch sync event
+// Save tasks to LocalStorage and broadcast update event
 export function saveTasks(tasks: AcademicTask[]): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     window.dispatchEvent(new CustomEvent("stash_tasks_updated", { detail: tasks }));
   } catch (e) {
-    console.warn("Failed to write tasks to storage:", e);
+    console.warn("Failed to save tasks to local storage:", e);
   }
 }
 
-// Check if a task is due right now
+// Format time remaining for human display
+export function getTimeRemainingString(task: AcademicTask): string {
+  try {
+    const now = new Date();
+    const [dueHours, dueMinutes] = task.dueTime.split(":").map(Number);
+    const [year, month, day] = task.dueDate.split("-").map(Number);
+
+    const targetDate = new Date(year, month - 1, day, dueHours, dueMinutes, 0, 0);
+    const diffMs = targetDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) {
+      const minutesAgo = Math.abs(Math.floor(diffMs / (1000 * 60)));
+      if (minutesAgo < 60) {
+        return `${minutesAgo}m overdue`;
+      }
+      const hoursAgo = Math.floor(minutesAgo / 60);
+      return `${hoursAgo}h overdue`;
+    }
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      return `in ${diffDays}d ${diffHours % 24}h`;
+    }
+    if (diffHours > 0) {
+      return `in ${diffHours}h ${diffMinutes % 60}m`;
+    }
+    return `in ${diffMinutes}m`;
+  } catch {
+    return task.dueTime;
+  }
+}
+
+// Check if a task is currently due
 export function isTaskDue(task: AcademicTask): boolean {
   if (task.status === "completed" || task.status === "dismissed") {
     return false;
@@ -172,57 +223,22 @@ export function isTaskDue(task: AcademicTask): boolean {
 
   const now = Date.now();
 
-  // If snoozed, check snooze timestamp
+  // If snoozed, check snooze expiry
   if (task.status === "snoozed" && task.snoozeUntil) {
     return now >= task.snoozeUntil;
   }
 
-  // Parse due date and due time (in local timezone)
+  // Check scheduled due date & time
   try {
+    const [dueHours, dueMinutes] = task.dueTime.split(":").map(Number);
     const [year, month, day] = task.dueDate.split("-").map(Number);
-    const [hour, minute] = task.dueTime.split(":").map(Number);
-    const targetDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-    const targetMs = targetDate.getTime();
 
-    // Trigger if within current minute window
-    if (now >= targetMs) {
-      if (!task.lastTriggeredAt || now - task.lastTriggeredAt > 90000) {
-        return true;
-      }
-    }
+    const targetDate = new Date(year, month - 1, day, dueHours, dueMinutes, 0, 0);
+    const diffMs = now - targetDate.getTime();
+
+    // Trigger if within last 60 seconds of due time
+    return diffMs >= 0 && diffMs < 120000;
   } catch {
     return false;
-  }
-
-  return false;
-}
-
-// Calculate human-readable time remaining string
-export function getTimeRemainingString(task: AcademicTask): string {
-  if (task.status === "completed") return "Completed";
-  if (task.status === "snoozed" && task.snoozeUntil) {
-    const diffMs = task.snoozeUntil - Date.now();
-    if (diffMs <= 0) return "Snooze ending now!";
-    const diffMins = Math.ceil(diffMs / (1000 * 60));
-    return `Snoozed (${diffMins}m left)`;
-  }
-
-  try {
-    const [year, month, day] = task.dueDate.split("-").map(Number);
-    const [hour, minute] = task.dueTime.split(":").map(Number);
-    const target = new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
-    const diff = target - Date.now();
-
-    if (diff <= 0) return "Due / Ringing";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `In ${days}d ${hours % 24}h`;
-    if (hours > 0) return `In ${hours}h ${mins}m`;
-    return `In ${mins} mins`;
-  } catch {
-    return "Scheduled";
   }
 }

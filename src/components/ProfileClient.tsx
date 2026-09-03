@@ -25,13 +25,24 @@ import {
   Download,
   RefreshCw,
   Mic,
+  MicOff,
   Volume2,
   Lock,
+  Unlock,
   AlarmClock,
   Music,
 } from "lucide-react";
 import { CURRENT_APP_VERSION, GITHUB_RELEASES_URL } from "@/lib/appVersion";
-import { getAlarmAckMode, setAlarmAckMode, AlarmAckMode, getDefaultAlarmTone, setDefaultAlarmTone } from "@/lib/taskAlarmStorage";
+import {
+  getAlarmAckMode,
+  setAlarmAckMode,
+  AlarmAckMode,
+  getDefaultAlarmTone,
+  setDefaultAlarmTone,
+  getVoiceAuthPhrase,
+  setVoiceAuthPhrase,
+  DEFAULT_VOICE_AUTH_PHRASE,
+} from "@/lib/taskAlarmStorage";
 import { voiceAssistant, VOICE_PERSONA_OPTIONS, VoicePersona } from "@/lib/voiceAssistantEngine";
 import { ALARM_TONE_OPTIONS } from "@/lib/alarmAudioEngine";
 import { AlarmSoundPickerModal } from "./AlarmSoundPickerModal";
@@ -79,9 +90,16 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
   const [keySaved, setKeySaved] = useState(false);
   const [keyRemoved, setKeyRemoved] = useState(false);
 
-  // Alarm Acknowledgment Mode State
+  // Alarm Acknowledgment & Voice Authorization State
   const [ackMode, setAckModeState] = useState<AlarmAckMode>("type_only");
   const [ackSaved, setAckSaved] = useState(false);
+  const [voicePasscode, setVoicePasscode] = useState(DEFAULT_VOICE_AUTH_PHRASE);
+  const [passcodeSaved, setPasscodeSaved] = useState(false);
+
+  // Live Voice Authorization Test Bench
+  const [isTestingVoiceAuth, setIsTestingVoiceAuth] = useState(false);
+  const [testVoiceTranscript, setTestVoiceTranscript] = useState("");
+  const [voiceAuthSuccess, setVoiceAuthSuccess] = useState<boolean | null>(null);
 
   // Voice Persona State
   const [selectedPersona, setSelectedPersona] = useState<VoicePersona>("alexa_us");
@@ -101,6 +119,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
       if (saved) setGeminiKey(saved);
     }
     setAckModeState(getAlarmAckMode());
+    setVoicePasscode(getVoiceAuthPhrase());
     setSelectedPersona(voiceAssistant.getSavedPersona());
     setSelectedTone(getDefaultAlarmTone());
   }, []);
@@ -113,18 +132,74 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
     setTimeout(() => setAckSaved(false), 2000);
   };
 
+  const handleSaveVoicePasscode = () => {
+    HapticEngine.trigger("success");
+    setVoiceAuthPhrase(voicePasscode);
+    setPasscodeSaved(true);
+    setTimeout(() => setPasscodeSaved(false), 2000);
+  };
+
+  // Test Voice Authorization with Live Microphone Recognition
+  const handleStartVoiceAuthTest = () => {
+    HapticEngine.trigger("medium");
+    setIsTestingVoiceAuth(true);
+    setTestVoiceTranscript("");
+    setVoiceAuthSuccess(null);
+
+    const targetWords = voicePasscode.toLowerCase().trim().split(/\s+/);
+
+    const started = voiceAssistant.startListening(
+      (transcript, isFinal) => {
+        setTestVoiceTranscript(transcript);
+        const spokenLower = transcript.toLowerCase();
+
+        // Check if spoken words match significant portion of target passcode
+        const matchCount = targetWords.filter((w) =>
+          spokenLower.includes(w)
+        ).length;
+        const isMatch =
+          matchCount >= Math.ceil(targetWords.length * 0.6) ||
+          spokenLower.includes(voicePasscode.toLowerCase().trim());
+
+        if (isMatch) {
+          HapticEngine.trigger("success");
+          setVoiceAuthSuccess(true);
+          voiceAssistant.stopListening();
+          setIsTestingVoiceAuth(false);
+          voiceAssistant.speakAlexaVoice("Voice authorization verified successfully!");
+        } else if (isFinal) {
+          HapticEngine.trigger("error");
+          setVoiceAuthSuccess(false);
+          setIsTestingVoiceAuth(false);
+        }
+      },
+      (err) => {
+        console.warn("Voice auth test error:", err);
+        setIsTestingVoiceAuth(false);
+        setVoiceAuthSuccess(false);
+      },
+      () => {
+        setIsTestingVoiceAuth(false);
+      }
+    );
+
+    if (!started) {
+      setIsTestingVoiceAuth(false);
+    }
+  };
+
   const handleSelectPersona = (persona: VoicePersona) => {
     HapticEngine.trigger("selection");
     setSelectedPersona(persona);
     voiceAssistant.setPersona(persona);
-    voiceAssistant.speakAlexaVoice(`Voice updated to ${VOICE_PERSONA_OPTIONS.find(p => p.id === persona)?.name}. How can I assist you?`);
+    voiceAssistant.speakAlexaVoice(`Voice updated to ${VOICE_PERSONA_OPTIONS.find(p => p.id === persona)?.name}.`);
   };
 
   const handleTestAlexaVoice = () => {
     HapticEngine.trigger("medium");
     setIsPlayingVoicePreview(true);
     const persona = VOICE_PERSONA_OPTIONS.find((p) => p.id === selectedPersona) || VOICE_PERSONA_OPTIONS[0];
-    const previewMessage = `Hello ${name || "Student"}! I am your ${persona.name}. I am ready to announce your wake-up alarms with 60 distinct ringtones.`;
+    const previewMessage = `Hello ${name || "Student"}! I am your ${persona.name}. Voice authorization and 60 alarm sounds are ready.`;
     voiceAssistant.speakAlexaVoice(
       previewMessage,
       () => setIsPlayingVoicePreview(true),
@@ -209,7 +284,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
           Student Profile &amp; Preferences
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Manage your verified academic credentials, 60+ alarm sounds, disarm challenges, and voice assistant settings.
+          Manage your verified academic credentials, Voice Authorization, 60+ alarm sounds, and Alexa AI personas.
         </p>
       </div>
 
@@ -407,7 +482,200 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
             )}
           </div>
 
-          {/* 2. 60+ Alarm Sounds Library & Default Tone */}
+          {/* 2. Voice Authorization & Alarm Disarm Verification (Dedicated Section) */}
+          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-cyan-500/30">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
+                  <Mic className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-display flex items-center gap-2">
+                    <span>Voice Authorization &amp; Disarm Verification</span>
+                    <span className="px-2 py-0.2 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono font-bold">
+                      Biometric Security
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Verify your speech to turn off alarms or require typed confirmation.
+                  </p>
+                </div>
+              </div>
+              {ackSaved && (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold">
+                  Saved ✓
+                </span>
+              )}
+            </div>
+
+            {/* Voice Passcode Setting */}
+            <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-3">
+              <label className="text-xs font-mono font-bold text-slate-300 block">
+                Your Voice Authorization Passcode Phrase
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={voicePasscode}
+                  onChange={(e) => setVoicePasscode(e.target.value)}
+                  placeholder="e.g. I am awake and ready to study"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-cyan-400 transition"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveVoicePasscode}
+                  className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition active:scale-95 cursor-pointer shadow-sm"
+                >
+                  {passcodeSaved ? "Saved!" : "Save Passcode"}
+                </button>
+              </div>
+              <p className="text-[11px] font-mono text-neutral-400">
+                When an alarm rings in Voice mode, speaking this phrase will disarm the sound.
+              </p>
+            </div>
+
+            {/* Live Voice Authorization Test Bench */}
+            <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/20 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-white font-display flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    <span>Test Voice Authorization Live</span>
+                  </h4>
+                  <p className="text-[11px] font-mono text-slate-400">
+                    Click test and speak your passcode into the microphone.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleStartVoiceAuthTest}
+                  disabled={isTestingVoiceAuth}
+                  className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    isTestingVoiceAuth
+                      ? "bg-rose-500 text-white animate-pulse"
+                      : "bg-white hover:bg-slate-200 text-black shadow-md"
+                  }`}
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>{isTestingVoiceAuth ? "Listening... Speak Now" : "Test Microphone & Authorization"}</span>
+                </button>
+              </div>
+
+              {testVoiceTranscript && (
+                <div className="p-3 rounded-xl bg-black/60 border border-white/10 text-xs font-mono space-y-1">
+                  <span className="text-[10px] text-slate-400 block">Heard from microphone:</span>
+                  <p className="text-white italic">"{testVoiceTranscript}"</p>
+                </div>
+              )}
+
+              {voiceAuthSuccess === true && (
+                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Voice Authorization Verified! Passcode matched.</span>
+                </div>
+              )}
+
+              {voiceAuthSuccess === false && (
+                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-mono flex items-center gap-2">
+                  <MicOff className="w-4 h-4 text-rose-400" />
+                  <span>Could not verify passcode. Try speaking clearly: "{voicePasscode}"</span>
+                </div>
+              )}
+            </div>
+
+            {/* 4 Disarm Modes */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 block">
+                Select Disarm Verification Mode
+              </label>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSelectAckMode("voice_only")}
+                  className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                    ackMode === "voice_only"
+                      ? "bg-cyan-500/15 border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg"
+                      : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white font-display">
+                      🎙️ Voice Authorization Only
+                    </span>
+                    {ackMode === "voice_only" && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                    Speak your voice passcode into the microphone to verify and disarm the alarm.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectAckMode("type_only")}
+                  className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                    ackMode === "type_only"
+                      ? "bg-purple-500/15 border-purple-500 ring-2 ring-purple-500/30 shadow-lg"
+                      : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white font-display">
+                      📝 Type Phrase Only
+                    </span>
+                    {ackMode === "type_only" && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                    You must type the exact challenge phrase to unlock the turn-off button.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectAckMode("both")}
+                  className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                    ackMode === "both"
+                      ? "bg-rose-500/15 border-rose-500 ring-2 ring-rose-500/30 shadow-lg"
+                      : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white font-display">
+                      🔐 Both (Max Security)
+                    </span>
+                    {ackMode === "both" && <CheckCircle2 className="w-4 h-4 text-rose-400" />}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                    Mandatory both: You must type the phrase AND pass Voice Authorization.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectAckMode("neither")}
+                  className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                    ackMode === "neither"
+                      ? "bg-emerald-500/15 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg"
+                      : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white font-display">
+                      ⚡ Neither (1-Tap Turn Off)
+                    </span>
+                    {ackMode === "neither" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                    Standard alarm behavior: Turns off immediately with 1 tap on the dismiss button.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* 3. 60+ Alarm Sounds Library & Default Tone */}
           <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-purple-500/20">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
@@ -464,112 +732,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 className="text-xs text-purple-400 hover:text-purple-300 font-mono font-bold flex items-center gap-1 cursor-pointer"
               >
                 <span>Change &rarr;</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3. Alarm Acknowledgment & Disarm Customization */}
-          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-rose-500/20">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                  <AlarmClock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white font-display">
-                    Alarm Acknowledgment Customization
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Choose what verification is required to turn off your wake-up alarms.
-                  </p>
-                </div>
-              </div>
-              {ackSaved && (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold">
-                  Saved ✓
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleSelectAckMode("type_only")}
-                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
-                  ackMode === "type_only"
-                    ? "bg-purple-500/15 border-purple-500 ring-2 ring-purple-500/30 shadow-lg"
-                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-display">
-                    📝 Type Phrase Only
-                  </span>
-                  {ackMode === "type_only" && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
-                </div>
-                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
-                  You must type the exact challenge phrase to unlock the turn-off button.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectAckMode("voice_only")}
-                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
-                  ackMode === "voice_only"
-                    ? "bg-cyan-500/15 border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg"
-                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-display">
-                    🎙️ Voice Confirmation
-                  </span>
-                  {ackMode === "voice_only" && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
-                </div>
-                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
-                  Speak into the microphone ("I am awake") to verify and disarm the alarm.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectAckMode("both")}
-                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
-                  ackMode === "both"
-                    ? "bg-rose-500/15 border-rose-500 ring-2 ring-rose-500/30 shadow-lg"
-                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-display">
-                    🔐 Both (Max Urgency)
-                  </span>
-                  {ackMode === "both" && <CheckCircle2 className="w-4 h-4 text-rose-400" />}
-                </div>
-                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
-                  Mandatory both: You must type the phrase AND speak the voice confirmation.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectAckMode("neither")}
-                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
-                  ackMode === "neither"
-                    ? "bg-emerald-500/15 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg"
-                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-display">
-                    ⚡ Neither (1-Tap Turn Off)
-                  </span>
-                  {ackMode === "neither" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                </div>
-                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
-                  Standard alarm behavior: Turns off immediately with 1 tap on the dismiss button.
-                </p>
               </button>
             </div>
           </div>
