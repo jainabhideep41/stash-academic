@@ -1,6 +1,8 @@
 // Academic Task & Alarm Storage System
 import { AlarmTone } from "./alarmAudioEngine";
 
+export type AlarmAckMode = "both" | "type_only" | "voice_only" | "neither";
+
 export interface AcademicTask {
   id: string;
   title: string;
@@ -10,15 +12,18 @@ export interface AcademicTask {
   priority: "low" | "medium" | "high" | "critical";
   category: "assignment" | "exam" | "lab" | "project" | "study" | "custom";
   alarmTone?: AlarmTone; // Chosen phone ringtone sound
-  challengeText: string; // The phrase the user MUST type to turn off the alarm
+  challengeText: string; // The phrase the user MUST type or speak to turn off the alarm
   status: "pending" | "snoozed" | "completed" | "dismissed";
   snoozeUntil?: number | null; // epoch ms
   lastTriggeredAt?: number | null;
+  voiceAlarmEnabled?: boolean; // Whether Alexa voice assistant speaks the task reminder during the alarm
+  durationSeconds?: number; // Ring duration (default: 90s / 1.5 mins)
   createdAt: string;
 }
 
 const STORAGE_KEY = "stash_academic_tasks_v1";
 const DEFAULT_TONE_KEY = "stash_default_alarm_tone";
+const ALARM_ACK_MODE_KEY = "stash_alarm_ack_mode";
 
 // Helper to get formatted local date string YYYY-MM-DD
 export function getTodayDateString(offsetDays = 0): string {
@@ -61,6 +66,25 @@ export function setDefaultAlarmTone(tone: AlarmTone): void {
   } catch {}
 }
 
+export function getAlarmAckMode(): AlarmAckMode {
+  if (typeof window === "undefined") return "type_only";
+  try {
+    const saved = localStorage.getItem(ALARM_ACK_MODE_KEY) as AlarmAckMode;
+    if (saved && ["both", "type_only", "voice_only", "neither"].includes(saved)) {
+      return saved;
+    }
+  } catch {}
+  return "type_only";
+}
+
+export function setAlarmAckMode(mode: AlarmAckMode): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ALARM_ACK_MODE_KEY, mode);
+    window.dispatchEvent(new CustomEvent("stash_ack_mode_updated", { detail: mode }));
+  } catch {}
+}
+
 // Sample default tasks to showcase when user first lands
 export const DEFAULT_TASKS: AcademicTask[] = [
   {
@@ -68,38 +92,44 @@ export const DEFAULT_TASKS: AcademicTask[] = [
     title: "Algorithms Homework 4: Dynamic Programming",
     description: "Solve Longest Common Subsequence and Knapsack problems on Stash.",
     dueDate: getTodayDateString(0),
-    dueTime: "23:59",
+    dueTime: getCurrentTimeString(30),
     priority: "high",
     category: "assignment",
     alarmTone: "radar",
-    challengeText: "I acknowledge: Complete Algorithms DP Homework",
+    challengeText: "I am awake and working on Dynamic Programming Assignment",
     status: "pending",
+    voiceAlarmEnabled: true,
+    durationSeconds: 90,
     createdAt: new Date().toISOString(),
   },
   {
     id: "task-2",
-    title: "Full Stack Lab 04 Submission",
-    description: "Generate assessment docx for FSD-II and upload to CU Portal.",
+    title: "Database Systems Mid-Term Revision",
+    description: "Review B-Trees, Normalization (1NF to BCNF), and ACID transactions.",
     dueDate: getTodayDateString(1),
-    dueTime: "17:00",
+    dueTime: "09:00",
     priority: "critical",
-    category: "lab",
-    alarmTone: "digital",
-    challengeText: "I acknowledge: Submit FSD Lab 4 Report",
+    category: "exam",
+    alarmTone: "siren",
+    challengeText: "I am ready for the Database Systems exam",
     status: "pending",
+    voiceAlarmEnabled: true,
+    durationSeconds: 90,
     createdAt: new Date().toISOString(),
   },
   {
     id: "task-3",
-    title: "Database Project Phase 2 ER Schema",
-    description: "Finalize relational schemas, normalization, and foreign keys.",
+    title: "Computer Networks Wireshark Lab Report",
+    description: "Analyze TCP 3-way handshake and TLS certificates.",
     dueDate: getTodayDateString(2),
-    dueTime: "14:30",
+    dueTime: "23:59",
     priority: "medium",
-    category: "project",
-    alarmTone: "gentle",
-    challengeText: "I acknowledge: Finalize Database Schema",
+    category: "lab",
+    alarmTone: "digital",
+    challengeText: "I am submitting the Computer Networks Lab Report",
     status: "pending",
+    voiceAlarmEnabled: true,
+    durationSeconds: 90,
     createdAt: new Date().toISOString(),
   },
 ];
@@ -118,13 +148,12 @@ export function loadTasks(): AcademicTask[] {
       return parsed;
     }
     return DEFAULT_TASKS;
-  } catch (e) {
-    console.warn("Failed to read tasks from storage:", e);
+  } catch {
     return DEFAULT_TASKS;
   }
 }
 
-// Save tasks to LocalStorage and dispatch event for real-time reactivity
+// Save tasks to LocalStorage and dispatch sync event
 export function saveTasks(tasks: AcademicTask[]): void {
   if (typeof window === "undefined") return;
   try {

@@ -3,7 +3,7 @@
  * Stash Academic Portal (v1.1.0 Enterprise Security Edition)
  */
 
-export const CURRENT_APP_VERSION = "1.4.0";
+export const CURRENT_APP_VERSION = "2.0.0";
 export const GITHUB_REPO = "jainabhideep41/stash-academic";
 export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
 

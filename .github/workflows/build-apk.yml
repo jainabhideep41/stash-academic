@@ -1,4 +1,4 @@
-name: Build & Release Android APK (Native Google One-Tap Edition)
+name: Build & Release Android APK (v2.0.0)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Native Mobile Android APK (Native Google One-Tap & Mobile UI)
+    name: Build Android APK (v2.0.0)
     runs-on: ubuntu-latest
 
     steps:
@@ -49,32 +49,44 @@ jobs:
       - name: 📦 Prepare APK Release Binary
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-v2.0.0.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Stash-Academic-v1.4.0-GoogleNative-APK
-          path: output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
+          name: Stash-v2.0.0-APK
+          path: output_apk/Stash-v2.0.0.apk
           if-no-files-found: error
 
-      - name: 🚀 Publish GitHub Release v1.4.0-google-native
+      - name: 🚀 Publish GitHub Release v2.0.0
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.4.0-google-native
-          name: "Stash Academic Mobile v1.4.0 (Native Google One-Tap Sign-In)"
+          tag_name: v2.0.0
+          name: "Stash v2.0.0"
           body: |
-            ## 📱 Stash Academic Mobile v1.4.0 (Native Google One-Tap Sign-In)
+            ## 🚀 Stash v2.0.0 (Alexa Voice Assistant & Voice Alarms)
             
-            ### 🔐 What's New:
-            - **⚡ Native Google Play Services One-Tap Account Picker**: Google login now opens a native Android bottom sheet right inside the app! No more redirecting to external Google Chrome tabs.
-            - **📱 Native Mobile App UI**: Dedicated top app bar, segmented control task filters, iOS/Android bottom action sheets, and floating action button (FAB).
-            - **📳 Micro-Haptic Feedback**: Tactile responses on touch and toggle interactions.
-            - **🛡️ Hardware DND Bypass & Silent Mode Alarm**: High-urgency academic alarms with mandatory typing verification.
+            ### 🎙️ Voice Assistant & Conversational Intelligence:
+            - **Alexa-Style Voice Engine**: Expressive female Text-To-Speech (TTS) voice with calibrated acoustic parameters.
+            - **Conversational Gemini Integration**: Seamless voice Q&A answering academic questions, reviewing upcoming tasks, and explaining complex concepts.
+            - **Interactive Voice Overlay**: Pulsing voice orb, live transcript bubbles, and audio waveform animations.
+            
+            ### ⏰ Voice Alarms & Customizable Disarm Challenges:
+            - **Alarm Acknowledgment Customizations** (Configurable in Profile Settings):
+              1. **Type Confirmation Only**: Type the target phrase to disarm.
+              2. **Voice Confirmation Only**: Speak into the mic ("I am awake") to verify.
+              3. **Both Required (Max Urgency)**: Type phrase AND speak voice confirmation.
+              4. **Neither (Standard 1-Tap)**: Instant 1-tap dismiss button.
+            - **1.5+ Minute Alarm Duration**: Alarms ring for at least 90s or continuously until turned off.
+            - **Alexa Voice Alarm Announcements**: Speaks custom spoken reminders when alarms trigger.
+            
+            ### 🔐 Authentication & UI:
+            - **Native Google One-Tap Account Picker**: In-app Google Play Services sign-in without external Chrome tabs.
+            - **Native Mobile UI**: Top App Bar, Segmented Controls, Bottom Action Sheets, and Floating Action Button.
             
             ### 📥 Download & Install:
-            Download `Stash-Academic-v1.4.0-GoogleNative.apk` below, tap to install on your Android device.
-          files: output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
+            Download `Stash-v2.0.0.apk` below and tap to install on your Android device.
+          files: output_apk/Stash-v2.0.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

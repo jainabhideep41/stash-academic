@@ -16,6 +16,7 @@ import {
   AlarmTone,
   ALARM_TONE_OPTIONS,
 } from "@/lib/alarmAudioEngine";
+import { voiceAssistant } from "@/lib/voiceAssistantEngine";
 import { NativeAlarmBridge } from "@/lib/nativeAlarmBridge";
 import { HapticEngine } from "@/lib/hapticEngine";
 import {
@@ -27,6 +28,8 @@ import {
   Trash2,
   X,
   Volume2,
+  Mic,
+  Sparkles,
 } from "lucide-react";
 
 export function DashboardTaskHub() {
@@ -42,6 +45,8 @@ export function DashboardTaskHub() {
   const [category, setCategory] = useState<AcademicTask["category"]>("assignment");
   const [priority, setPriority] = useState<AcademicTask["priority"]>("high");
   const [alarmTone, setAlarmTone] = useState<AlarmTone>("digital");
+  const [voiceAlarmEnabled, setVoiceAlarmEnabled] = useState(true);
+  const [durationSeconds, setDurationSeconds] = useState(90);
   const [challengeText, setChallengeText] = useState("");
   const [previewPlaying, setPreviewPlaying] = useState<AlarmTone | null>(null);
 
@@ -83,6 +88,8 @@ export function DashboardTaskHub() {
       priority,
       status: "pending",
       alarmTone,
+      voiceAlarmEnabled,
+      durationSeconds,
       challengeText: challengeText.trim() || `I acknowledge: ${title.trim()}`,
       createdAt: new Date().toISOString(),
     };
@@ -143,6 +150,8 @@ export function DashboardTaskHub() {
       priority: "critical",
       status: "pending",
       alarmTone: alarmTone,
+      voiceAlarmEnabled: true,
+      durationSeconds: 90,
       challengeText: "I am awake and working on Database Assignment 3",
       createdAt: new Date().toISOString(),
     };
@@ -161,7 +170,7 @@ export function DashboardTaskHub() {
       setPreviewPlaying(null);
     } else {
       HapticEngine.trigger("selection");
-      alarmAudio.startAlarm(tone);
+      alarmAudio.startAlarm(tone, 10);
       setPreviewPlaying(tone);
     }
   };
@@ -207,7 +216,7 @@ export function DashboardTaskHub() {
             <span>Academic Tasks &amp; Alarms</span>
           </h2>
           <p className="text-[11px] font-mono text-neutral-400">
-            {activeCount} Active &bull; Bypass DND Hardware Alarms
+            {activeCount} Active &bull; 1.5+ Min DND &amp; Voice Alarms
           </p>
         </div>
         
@@ -215,7 +224,7 @@ export function DashboardTaskHub() {
           <button
             type="button"
             onClick={() => handleTriggerTestAlarm()}
-            title="Test Phone Wake-Up Alarm Screen & Sound"
+            title="Test Phone Wake-Up Alarm Screen & Voice"
             className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             <AlarmClock className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
@@ -341,6 +350,12 @@ export function DashboardTaskHub() {
                           <span>{getToneIcon(t.alarmTone)}</span>
                           <span>{t.alarmTone || "digital"}</span>
                         </span>
+                        {t.voiceAlarmEnabled !== false && (
+                          <span className="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 flex items-center gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                            <span>Voice</span>
+                          </span>
+                        )}
                       </div>
 
                       <span
@@ -375,7 +390,7 @@ export function DashboardTaskHub() {
                     <div className="flex items-center justify-between pt-1 border-t border-white/5">
                       <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
                         <Clock className="w-3 h-3 text-neutral-500" />
-                        <span>{t.dueTime} &bull; {t.dueDate}</span>
+                        <span>{t.dueTime} &bull; {t.dueDate} ({t.durationSeconds || 90}s ring)</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -440,7 +455,7 @@ export function DashboardTaskHub() {
                     Schedule Task Alarm
                   </h3>
                   <p className="text-[11px] font-mono text-neutral-400">
-                    Bypasses phone silent/DND with mandatory acknowledgment
+                    Bypasses phone DND with Alexa voice reminders &amp; verification
                   </p>
                 </div>
               </div>
@@ -556,6 +571,42 @@ export function DashboardTaskHub() {
                 </div>
               </div>
 
+              {/* Voice Alarm & Duration Customizations */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800">
+                <div className="flex items-center justify-between sm:justify-start gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Alexa Voice Alarm</span>
+                    </span>
+                    <p className="text-[10px] text-neutral-400 font-mono">
+                      Speaks task reminder aloud
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={voiceAlarmEnabled}
+                    onChange={(e) => setVoiceAlarmEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 bg-neutral-800 border-neutral-700 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-mono font-bold text-neutral-300 block">
+                    Alarm Ring Duration
+                  </label>
+                  <select
+                    value={durationSeconds}
+                    onChange={(e) => setDurationSeconds(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition"
+                  >
+                    <option value={90}>⏱️ 1.5 Minutes (90s)</option>
+                    <option value={180}>⏱️ 3 Minutes (180s)</option>
+                    <option value={300}>⏱️ 5 Minutes (300s)</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Alarm Tone Selector */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
@@ -598,8 +649,8 @@ export function DashboardTaskHub() {
               {/* Anti-Sleep Typing Challenge */}
               <div className="space-y-1">
                 <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
-                  <span>Anti-Sleep Typing Challenge</span>
-                  <span className="text-[10px] text-neutral-500 font-normal">Mandatory to turn off alarm</span>
+                  <span>Anti-Sleep Challenge Text</span>
+                  <span className="text-[10px] text-neutral-500 font-normal">Used for typed / voice verification</span>
                 </label>
                 <input
                   type="text"

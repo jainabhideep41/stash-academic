@@ -1,6 +1,8 @@
 // Web Audio API Synthesizer Alarm Engine (Phone Wake-Up Style)
 // Features: Custom Ringtones, Hardware Vibration API, Screen WakeLock API, and MediaSession Integration
 
+import { voiceAssistant } from "./voiceAssistantEngine";
+
 export type AlarmTone = "digital" | "radar" | "siren" | "gentle" | "arcade";
 
 export interface ToneInfo {
@@ -47,6 +49,7 @@ class AlarmAudioEngine {
   private audioCtx: AudioContext | null = null;
   private isPlaying: boolean = false;
   private intervalId: NodeJS.Timeout | number | null = null;
+  private timeoutId: NodeJS.Timeout | number | null = null;
   private vibrationIntervalId: NodeJS.Timeout | number | null = null;
   private wakeLockSentinel: any = null;
   private currentTone: AlarmTone = "digital";
@@ -138,145 +141,143 @@ class AlarmAudioEngine {
     const now = this.audioCtx.currentTime;
     const freqs = [880, 880, 1046, 1174];
     const burstDuration = 0.08;
-    const pauseDuration = 0.04;
 
     freqs.forEach((freq, idx) => {
-      const startTime = now + idx * (burstDuration + pauseDuration);
       const osc = this.audioCtx!.createOscillator();
-      const oscGain = this.audioCtx!.createGain();
+      const gain = this.audioCtx!.createGain();
 
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(freq, startTime);
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.12);
 
-      oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.exponentialRampToValueAtTime(0.7, startTime + 0.01);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + burstDuration);
+      gain.gain.setValueAtTime(0.01, now + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.4, now + idx * 0.12 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + burstDuration);
 
-      osc.connect(oscGain);
-      oscGain.connect(this.audioCtx!.destination);
+      osc.connect(gain);
+      gain.connect(this.audioCtx!.destination);
 
-      osc.start(startTime);
-      osc.stop(startTime + burstDuration);
+      osc.start(now + idx * 0.12);
+      osc.stop(now + idx * 0.12 + burstDuration);
     });
   }
 
-  // 2. Radar Chimes (Resonant marimba-style pings)
-  private playRadarBurst(): void {
+  // 2. Radar Chimes (Ascending modern sonar pings)
+  private playRadarPing(): void {
     if (!this.audioCtx) return;
     const now = this.audioCtx.currentTime;
-    const notes = [659.25, 880.0, 1318.51];
+    const chord = [587.33, 880, 1174.66]; // D5, A5, D6
 
-    notes.forEach((freq, idx) => {
-      const startTime = now + idx * 0.12;
+    chord.forEach((freq, i) => {
       const osc = this.audioCtx!.createOscillator();
-      const oscGain = this.audioCtx!.createGain();
+      const gain = this.audioCtx!.createGain();
 
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, startTime);
+      osc.frequency.setValueAtTime(freq, now + i * 0.06);
 
-      oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.65, startTime + 0.015);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+      gain.gain.setValueAtTime(0.01, now + i * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.35, now + i * 0.06 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.06 + 0.5);
 
-      osc.connect(oscGain);
-      oscGain.connect(this.audioCtx!.destination);
+      osc.connect(gain);
+      gain.connect(this.audioCtx!.destination);
 
-      osc.start(startTime);
-      osc.stop(startTime + 0.38);
+      osc.start(now + i * 0.06);
+      osc.stop(now + i * 0.06 + 0.55);
     });
   }
 
-  // 3. Emergency Siren (Sweeping oscillating sirens)
-  private playSirenBurst(): void {
+  // 3. Emergency Siren (Continuous high-low sweep)
+  private playSirenSweep(): void {
     if (!this.audioCtx) return;
     const now = this.audioCtx.currentTime;
     const osc = this.audioCtx.createOscillator();
-    const oscGain = this.audioCtx.createGain();
+    const gain = this.audioCtx.createGain();
 
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(550, now);
-    osc.frequency.linearRampToValueAtTime(1100, now + 0.25);
-    osc.frequency.linearRampToValueAtTime(550, now + 0.5);
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(650, now);
+    osc.frequency.exponentialRampToValueAtTime(1400, now + 0.35);
+    osc.frequency.exponentialRampToValueAtTime(650, now + 0.7);
 
-    oscGain.gain.setValueAtTime(0.01, now);
-    oscGain.gain.linearRampToValueAtTime(0.75, now + 0.05);
-    oscGain.gain.linearRampToValueAtTime(0.75, now + 0.45);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.05);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.65);
+    gain.gain.linearRampToValueAtTime(0.01, now + 0.7);
 
-    osc.connect(oscGain);
-    oscGain.connect(this.audioCtx.destination);
+    osc.connect(gain);
+    gain.connect(this.audioCtx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.55);
+    osc.stop(now + 0.7);
   }
 
-  // 4. Gentle Morning (Major 7th soft harmonic chime)
-  private playGentleBurst(): void {
+  // 4. Gentle Morning (Warm soothing bells)
+  private playGentleChime(): void {
     if (!this.audioCtx) return;
     const now = this.audioCtx.currentTime;
-    const notes = [440, 554.37, 659.25, 830.61];
-
-    notes.forEach((freq, idx) => {
-      const startTime = now + idx * 0.09;
-      const osc = this.audioCtx!.createOscillator();
-      const oscGain = this.audioCtx!.createGain();
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, startTime);
-
-      oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.5, startTime + 0.03);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
-
-      osc.connect(oscGain);
-      oscGain.connect(this.audioCtx!.destination);
-
-      osc.start(startTime);
-      osc.stop(startTime + 0.5);
-    });
-  }
-
-  // 5. 8-Bit Arcade (Energetic game wake-up)
-  private playArcadeBurst(): void {
-    if (!this.audioCtx) return;
-    const now = this.audioCtx.currentTime;
-    const freqs = [330, 440, 660, 880, 1320];
+    const freqs = [523.25, 659.25, 783.99, 1046.5]; // C Major Harmonic
 
     freqs.forEach((freq, idx) => {
-      const startTime = now + idx * 0.06;
       const osc = this.audioCtx!.createOscillator();
-      const oscGain = this.audioCtx!.createGain();
+      const gain = this.audioCtx!.createGain();
 
-      osc.type = "square";
-      osc.frequency.setValueAtTime(freq, startTime);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.1);
 
-      oscGain.gain.setValueAtTime(0.001, startTime);
-      oscGain.gain.linearRampToValueAtTime(0.45, startTime + 0.01);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.07);
+      gain.gain.setValueAtTime(0.01, now + idx * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.3, now + idx * 0.1 + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.8);
 
-      osc.connect(oscGain);
-      oscGain.connect(this.audioCtx!.destination);
+      osc.connect(gain);
+      gain.connect(this.audioCtx!.destination);
 
-      osc.start(startTime);
-      osc.stop(startTime + 0.08);
+      osc.start(now + idx * 0.1);
+      osc.stop(now + idx * 0.1 + 0.85);
     });
   }
 
+  // 5. 8-Bit Arcade Pulses
+  private playArcadePulse(): void {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const notes = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+
+    notes.forEach((freq, i) => {
+      const osc = this.audioCtx!.createOscillator();
+      const gain = this.audioCtx!.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, now + i * 0.05);
+
+      gain.gain.setValueAtTime(0.01, now + i * 0.05);
+      gain.gain.linearRampToValueAtTime(0.25, now + i * 0.05 + 0.01);
+      gain.gain.linearRampToValueAtTime(0.001, now + i * 0.05 + 0.045);
+
+      osc.connect(gain);
+      gain.connect(this.audioCtx!.destination);
+
+      osc.start(now + i * 0.05);
+      osc.stop(now + i * 0.05 + 0.05);
+    });
+  }
+
+  // Play single cycle of the active tone
   private playTonePattern(tone: AlarmTone): void {
     switch (tone) {
+      case "digital":
+        this.playDigitalBurst();
+        break;
       case "radar":
-        this.playRadarBurst();
+        this.playRadarPing();
         break;
       case "siren":
-        this.playSirenBurst();
+        this.playSirenSweep();
         break;
       case "gentle":
-        this.playGentleBurst();
+        this.playGentleChime();
         break;
       case "arcade":
-        this.playArcadeBurst();
+        this.playArcadePulse();
         break;
-      case "digital":
       default:
         this.playDigitalBurst();
         break;
@@ -284,7 +285,8 @@ class AlarmAudioEngine {
   }
 
   // Start repeating alarm with chosen tone, hardware vibration, and screen wakelock
-  public startAlarm(tone: AlarmTone = "digital"): void {
+  // Rings for at least 90s (1.5 minutes) by default or until turned off
+  public startAlarm(tone: AlarmTone = "digital", durationSeconds = 90): void {
     if (this.isPlaying) return;
     this.unlockAudio();
     this.isPlaying = true;
@@ -303,6 +305,16 @@ class AlarmAudioEngine {
         this.playTonePattern(this.currentTone);
       }
     }, intervalMs);
+
+    // Enforce minimum 1.5 min duration timer (defaults to 90s)
+    if (durationSeconds > 0) {
+      if (this.timeoutId) clearTimeout(this.timeoutId as any);
+      this.timeoutId = setTimeout(() => {
+        if (this.isPlaying) {
+          this.stopAlarm();
+        }
+      }, durationSeconds * 1000);
+    }
   }
 
   // Preview a single burst of a chosen tone
@@ -321,8 +333,13 @@ class AlarmAudioEngine {
       clearInterval(this.intervalId as any);
       this.intervalId = null;
     }
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId as any);
+      this.timeoutId = null;
+    }
     this.stopHardwareVibration();
     this.releaseWakeLock();
+    voiceAssistant.stopSpeaking();
 
     if (typeof window !== "undefined" && "mediaSession" in navigator) {
       try {
@@ -331,7 +348,7 @@ class AlarmAudioEngine {
     }
   }
 
-  // Play celebration / success chime when user solves typing challenge
+  // Play celebration / success chime when user solves challenge
   public playSuccessChime(): void {
     this.unlockAudio();
     if (!this.audioCtx) return;

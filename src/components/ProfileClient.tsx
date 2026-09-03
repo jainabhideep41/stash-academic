@@ -24,8 +24,15 @@ import {
   Smartphone,
   Download,
   RefreshCw,
+  Mic,
+  Volume2,
+  Lock,
+  AlarmClock,
 } from "lucide-react";
 import { CURRENT_APP_VERSION, GITHUB_RELEASES_URL } from "@/lib/appVersion";
+import { getAlarmAckMode, setAlarmAckMode, AlarmAckMode } from "@/lib/taskAlarmStorage";
+import { voiceAssistant } from "@/lib/voiceAssistantEngine";
+import { HapticEngine } from "@/lib/hapticEngine";
 
 interface ProfileClientProps {
   initialUser: {
@@ -69,18 +76,45 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
   const [keySaved, setKeySaved] = useState(false);
   const [keyRemoved, setKeyRemoved] = useState(false);
 
+  // Alarm Acknowledgment Mode State
+  const [ackMode, setAckModeState] = useState<AlarmAckMode>("type_only");
+  const [ackSaved, setAckSaved] = useState(false);
+
+  // Alexa Voice Test State
+  const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copiedUid, setCopiedUid] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Load once on initial mount only - NO LOOP when user clears input!
+  // Load once on initial mount
   useEffect(() => {
     if (!initialGeminiKey) {
       const saved = localStorage.getItem("stash_gemini_api_key");
       if (saved) setGeminiKey(saved);
     }
+    setAckModeState(getAlarmAckMode());
   }, []);
+
+  const handleSelectAckMode = (mode: AlarmAckMode) => {
+    HapticEngine.trigger("selection");
+    setAckModeState(mode);
+    setAlarmAckMode(mode);
+    setAckSaved(true);
+    setTimeout(() => setAckSaved(false), 2000);
+  };
+
+  const handleTestAlexaVoice = () => {
+    HapticEngine.trigger("medium");
+    setIsPlayingVoicePreview(true);
+    const previewMessage = `Hello ${name || "Student"}! I am your Stash academic voice assistant. I can announce your wake-up alarms and answer your study questions.`;
+    voiceAssistant.speakAlexaVoice(
+      previewMessage,
+      () => setIsPlayingVoicePreview(true),
+      () => setIsPlayingVoicePreview(false)
+    );
+  };
 
   const handleRemoveApiKey = async () => {
     setGeminiKey("");
@@ -104,10 +138,8 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
     }
 
     localStorage.setItem("stash_gemini_api_key", geminiKey.trim());
-    // Also save in cookie for server actions
     document.cookie = `stash_gemini_key=${encodeURIComponent(geminiKey.trim())}; path=/; max-age=31536000; SameSite=Lax`;
     
-    // Save to Database / Account server action
     try {
       await saveUserGeminiApiKey(geminiKey.trim());
     } catch (e) {
@@ -156,10 +188,10 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-black text-white font-display tracking-tight">
-          Student Profile
+          Student Profile &amp; Preferences
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Manage your verified academic credentials, university enrollment, and AI settings.
+          Manage your verified academic credentials, alarm disarm challenges, and Alexa voice assistant settings.
         </p>
       </div>
 
@@ -199,268 +231,321 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
               {initialUser.image ? (
                 <img
                   src={initialUser.image}
-                  alt={name}
-                  className="w-20 h-20 rounded-full border-2 border-white/20 object-cover shadow-lg"
+                  alt={name || "Student"}
+                  className="w-20 h-20 rounded-full border-2 border-purple-500/40 object-cover shadow-lg"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-white text-black font-black text-2xl flex items-center justify-center shadow-lg">
-                  {name.charAt(0) || "S"}
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-2xl font-black text-white shadow-lg">
+                  {name ? name.charAt(0) : "S"}
                 </div>
               )}
               <div>
-                <h3 className="text-lg font-bold text-white leading-tight">{name}</h3>
+                <h2 className="text-lg font-black text-white font-display tracking-tight">
+                  {name || "Student"}
+                </h2>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{initialUser.email}</p>
               </div>
             </div>
 
-            {/* UID Bar */}
-            <div className="bg-black/50 border border-white/10 rounded-2xl p-3 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                  Student UID
-                </span>
-                <span className="text-sm font-mono font-black text-white tracking-widest">
-                  {uidNumber}
-                </span>
+            {/* Academic Badges */}
+            <div className="space-y-2 pt-2 border-t border-white/10 text-xs font-mono">
+              <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-slate-400">UID:</span>
+                <span className="font-bold text-purple-300 font-mono">{uidNumber}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyUid}
-                title="Copy UID"
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition cursor-pointer"
-              >
-                {copiedUid ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {/* Academic Highlights */}
-            <div className="space-y-2.5 pt-2 border-t border-white/10 text-xs">
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-                  Branch
-                </span>
-                <span className="font-semibold text-white truncate max-w-[140px] text-right">
-                  {branch}
-                </span>
+              <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-slate-400">Branch:</span>
+                <span className="font-bold text-white text-right truncate max-w-[140px]">{branch}</span>
               </div>
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                  Academic Year
-                </span>
-                <span className="font-semibold text-white">Year {yearOfStudy}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="flex items-center gap-1.5 font-mono">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  SSO Linked
-                </span>
-                <span className="font-mono text-[11px] text-emerald-400">Google / GitHub</span>
+              <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-black/40 border border-white/5">
+                <span className="text-slate-400">Year:</span>
+                <span className="font-bold text-cyan-300">Year {yearOfStudy}</span>
               </div>
             </div>
 
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsEditing(!isEditing)}
-            className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-xs transition cursor-pointer"
-          >
-            {isEditing ? "Cancel Editing" : "Edit Academic Details"}
-          </button>
         </div>
 
-        {/* Detailed Form & Settings */}
+        {/* Right 2 Columns: Editable Details, Voice Settings & Alarm Preferences */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* 1. Academic Credentials Box */}
+          {/* 1. Academic Enrollment Credentials */}
           <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
-                <h3 className="text-base font-bold text-white font-display">
-                  {isEditing ? "Edit Profile Information" : "Academic Credentials Overview"}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {isEditing
-                    ? "Update your enrollment records and university student ID."
-                    : "Your university credentials as verified on the Stash platform."}
-                </p>
+                <h3 className="text-base font-bold text-white font-display">Academic Enrollment</h3>
+                <p className="text-xs text-slate-400">University department &amp; UID number details</p>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold uppercase">
-                Active Student
-              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditing(!isEditing)}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-sm cursor-pointer"
+              >
+                {isEditing ? "Cancel" : "Edit Credentials"}
+              </button>
             </div>
 
             {isEditing ? (
-              /* Editable Form */
-              <form onSubmit={handleUpdate} className="space-y-5">
+              <form onSubmit={handleUpdate} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
                     Full Name
                   </label>
                   <input
                     type="text"
+                    required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white text-sm focus:outline-none focus:border-white transition"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition"
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                    University / SSO Email (Locked)
-                  </label>
-                  <input
-                    type="email"
-                    value={initialUser.email || ""}
-                    disabled
-                    className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-400 text-sm cursor-not-allowed"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+                      Engineering Branch
+                    </label>
+                    <select
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition"
+                    >
+                      {BRANCH_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
-                    Course / Branch
-                  </label>
-                  <select
-                    value={branch}
-                    onChange={(e) => setBranch(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white text-sm focus:outline-none focus:border-white transition cursor-pointer"
-                  >
-                    {BRANCH_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt} className="bg-neutral-950 text-white">
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
-                    Year of Study
-                  </label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {YEAR_OPTIONS.map((yr) => (
-                      <button
-                        key={yr}
-                        type="button"
-                        onClick={() => setYearOfStudy(yr)}
-                        className={`py-2.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
-                          yearOfStudy === yr
-                            ? "bg-white text-black border-white shadow-md"
-                            : "bg-black/60 text-slate-400 border-white/10 hover:border-white/30 hover:text-white"
-                        }`}
-                      >
-                        Year {yr}
-                      </button>
-                    ))}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+                      Year of Study
+                    </label>
+                    <select
+                      value={yearOfStudy}
+                      onChange={(e) => setYearOfStudy(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition"
+                    >
+                      {YEAR_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>
+                          Year {opt}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
-                    Student UID / Roll Number
+                    University Roll / UID Number
                   </label>
                   <input
                     type="text"
+                    required
                     value={uidNumber}
                     onChange={(e) => setUidNumber(e.target.value)}
-                    required
-                    placeholder="e.g. 24BCS10694"
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-white transition"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs font-mono focus:outline-none focus:border-purple-400 transition uppercase"
                   />
                 </div>
 
-                <div className="pt-2 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="px-5 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-slate-400 text-xs font-bold transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex justify-end pt-2">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Save className="w-4 h-4 text-black" />}
+                    {loading && <Loader2 className="w-4 h-4 animate-spin text-black" />}
                     <span>Save Changes</span>
                   </button>
                 </div>
               </form>
             ) : (
-              /* Read-only Detailed View */
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                      Full Legal Name
-                    </span>
-                    <span className="text-sm font-bold text-white block">{name}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
+                    Student UID Number
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold font-mono text-white">{uidNumber}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyUid}
+                      className="text-xs text-purple-400 hover:text-purple-300 font-mono flex items-center gap-1"
+                    >
+                      {copiedUid ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedUid ? "Copied" : "Copy"}</span>
+                    </button>
                   </div>
+                </div>
 
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                      University UID
-                    </span>
-                    <span className="text-sm font-mono font-bold text-purple-300 block">{uidNumber}</span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                      Department / Branch
-                    </span>
-                    <span className="text-sm font-bold text-white block">{branch}</span>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                      Academic Year
-                    </span>
-                    <span className="text-sm font-bold text-cyan-300 block">Year {yearOfStudy}</span>
-                  </div>
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
+                    Branch / Department
+                  </span>
+                  <span className="text-sm font-bold text-white block truncate">{branch}</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 2. Google Gemini AI API Configuration Card */}
-          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-purple-500/20">
+          {/* 2. Alarm Acknowledgment & Disarm Customization Card (Requested Feature) */}
+          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-rose-500/20">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <AlarmClock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-display">
+                    Alarm Acknowledgment Customization
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Choose what verification is required to turn off your wake-up alarms.
+                  </p>
+                </div>
+              </div>
+              {ackSaved && (
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold">
+                  Saved ✓
+                </span>
+              )}
+            </div>
+
+            {/* 4 Customization Options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              
+              {/* Option 1: Confirmation Message Type Only */}
+              <button
+                type="button"
+                onClick={() => handleSelectAckMode("type_only")}
+                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                  ackMode === "type_only"
+                    ? "bg-purple-500/15 border-purple-500 ring-2 ring-purple-500/30 shadow-lg"
+                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white font-display">
+                    📝 Type Phrase Only
+                  </span>
+                  {ackMode === "type_only" && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                  You must type the exact challenge phrase to unlock the turn-off button.
+                </p>
+              </button>
+
+              {/* Option 2: Voice Confirmation Only */}
+              <button
+                type="button"
+                onClick={() => handleSelectAckMode("voice_only")}
+                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                  ackMode === "voice_only"
+                    ? "bg-cyan-500/15 border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg"
+                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white font-display">
+                    🎙️ Voice Confirmation
+                  </span>
+                  {ackMode === "voice_only" && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                  Speak into the microphone ("I am awake") to verify and disarm the alarm.
+                </p>
+              </button>
+
+              {/* Option 3: Both Required */}
+              <button
+                type="button"
+                onClick={() => handleSelectAckMode("both")}
+                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                  ackMode === "both"
+                    ? "bg-rose-500/15 border-rose-500 ring-2 ring-rose-500/30 shadow-lg"
+                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white font-display">
+                    🔐 Both (Max Urgency)
+                  </span>
+                  {ackMode === "both" && <CheckCircle2 className="w-4 h-4 text-rose-400" />}
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                  Mandatory both: You must type the phrase AND speak the voice confirmation.
+                </p>
+              </button>
+
+              {/* Option 4: Neither (Standard 1-tap) */}
+              <button
+                type="button"
+                onClick={() => handleSelectAckMode("neither")}
+                className={`p-4 rounded-2xl border text-left transition active:scale-[0.98] cursor-pointer space-y-1.5 ${
+                  ackMode === "neither"
+                    ? "bg-emerald-500/15 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg"
+                    : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white font-display">
+                    ⚡ Neither (1-Tap Turn Off)
+                  </span>
+                  {ackMode === "neither" && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+                  Standard alarm behavior: Turns off immediately with 1 tap on the dismiss button.
+                </p>
+              </button>
+
+            </div>
+          </div>
+
+          {/* 3. Alexa-Style Voice Assistant & Gemini AI Key */}
+          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-cyan-500/20">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white font-display">
-                    Google Gemini AI Key
+                    Alexa Voice Assistant &amp; Gemini AI
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Powers live AI Objectives & Learning Outcomes generation in Assessment Studio.
+                    High-definition female TTS voice + Google Gemini intelligence
                   </p>
                 </div>
               </div>
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-mono text-purple-400 hover:text-purple-300 font-bold hover:underline"
+              <button
+                type="button"
+                onClick={handleTestAlexaVoice}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
               >
-                <span>Get Free Key</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                <Volume2 className={`w-3.5 h-3.5 ${isPlayingVoicePreview ? "animate-pulse text-cyan-400" : ""}`} />
+                <span>{isPlayingVoicePreview ? "Speaking..." : "Test Alexa Voice"}</span>
+              </button>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Google AI Studio API Key (Gemini)</span>
+                <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Google Gemini API Key</span>
+                  </div>
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] font-mono text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>Get Free Key</span>
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
                 </label>
+
                 <div className="relative">
                   <input
                     type={showKey ? "text" : "password"}
@@ -478,7 +563,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed font-mono">
-                  Your key is saved locally to your device and used exclusively for your assessment synthesis.
+                  Saved locally and used for conversational voice queries, assessment generation, and voice alarms.
                 </p>
               </div>
 
@@ -487,7 +572,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   <button
                     type="button"
                     onClick={handleRemoveApiKey}
-                    className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{keyRemoved ? "Removed!" : "Remove Key"}</span>
@@ -496,16 +581,16 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 <button
                   type="button"
                   onClick={handleSaveApiKey}
-                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95"
                 >
                   {keySaved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4 text-black" />}
-                  <span>{keySaved ? "API Key Saved!" : "Save Gemini Key"}</span>
+                  <span>{keySaved ? "Saved!" : "Save Gemini Key"}</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Software Version & In-App Updates Card */}
+          {/* 4. Software Version & In-App Updates Card */}
           <div className="p-6 rounded-3xl bg-neutral-900/50 border border-neutral-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
               <div className="flex items-center gap-2.5">
@@ -513,22 +598,22 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">App Version & Updates</h3>
+                  <h3 className="text-sm font-bold text-white">App Version &amp; Updates</h3>
                   <p className="text-[11px] font-mono text-neutral-400">
-                    Stash Academic Mobile & Web Software Manager
+                    Stash Academic Software Manager
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>v{CURRENT_APP_VERSION} Installed</span>
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-slate-400 font-mono leading-relaxed">
-              Stash supports direct in-app software updates. Check for the newest releases containing hardware DND alarm features, AI assessment generators, and speed optimizations.
+              Stash supports direct in-app updates. Check for the newest releases containing hardware DND voice alarms, Alexa TTS assistant, and speed optimizations.
             </p>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -551,16 +636,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
                   <span>Check for Updates</span>
                 </button>
-
-                <a
-                  href={`${GITHUB_RELEASES_URL}/download/v1.3.0-mobile-ui/Stash-Academic-v1.3.0-Mobile.apk`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-black" />
-                  <span>Download v1.3.0 APK</span>
-                </a>
               </div>
             </div>
           </div>
@@ -568,7 +643,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
         </div>
 
       </div>
-
     </div>
   );
 }

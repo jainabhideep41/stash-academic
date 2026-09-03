@@ -14,10 +14,12 @@ import {
   ChevronRight,
   UserCircle,
   Sparkles,
+  Mic,
 } from "lucide-react";
 import { GlobalAlarmProvider } from "./GlobalAlarmProvider";
 import { AppUpdateModal } from "./AppUpdateModal";
 import { NativeMobileTabBar } from "./NativeMobileTabBar";
+import { VoiceAssistantOverlay } from "./VoiceAssistantOverlay";
 import { CURRENT_APP_VERSION } from "@/lib/appVersion";
 import { NativeMobileEngine } from "@/lib/nativeMobileEngine";
 import { HapticEngine } from "@/lib/hapticEngine";
@@ -123,6 +125,18 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             <button
               type="button"
               onClick={() => {
+                HapticEngine.trigger("medium");
+                window.dispatchEvent(new CustomEvent("stash_open_voice_assistant"));
+              }}
+              className="p-1.5 rounded-full bg-gradient-to-tr from-purple-600/30 to-cyan-500/30 border border-cyan-500/40 text-cyan-300 active:scale-95 transition"
+              title="Alexa Voice Assistant"
+            >
+              <Mic className="w-4 h-4 text-cyan-300 animate-pulse" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 HapticEngine.trigger("light");
                 window.dispatchEvent(new CustomEvent("stash_check_updates"));
               }}
@@ -154,14 +168,26 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             </Link>
 
             {/* Quick Upload / Action Button */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <Link
                 href="/vault"
-                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs transition shadow-sm"
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs transition shadow-sm cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4 text-black" />
                 <span>Upload File</span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  HapticEngine.trigger("medium");
+                  window.dispatchEvent(new CustomEvent("stash_open_voice_assistant"));
+                }}
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/30 text-white font-bold text-xs transition shadow-sm cursor-pointer"
+              >
+                <Mic className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>Alexa Voice Assistant</span>
+              </button>
             </div>
 
             {/* Navigation Links */}
@@ -257,6 +283,16 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             <div className="flex items-center gap-4">
               <button
                 type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("stash_open_voice_assistant"))}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/30 text-cyan-300 text-xs font-mono font-bold transition cursor-pointer"
+                title="Alexa Voice Assistant"
+              >
+                <Mic className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span>Voice Assistant</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs font-mono font-bold transition cursor-pointer"
                 title="Check for software updates"
@@ -296,11 +332,14 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             </div>
           </header>
 
-          {/* Page Content Body (Top-padded on mobile for app bar, bottom-padded for bottom bar) */}
+          {/* Page Content Body */}
           <main className="p-3 sm:p-6 lg:p-8 flex-1 pt-18 md:pt-6 pb-28 md:pb-8">{children}</main>
 
           {/* In-App Auto-Update Modal & Banners */}
           <AppUpdateModal />
+
+          {/* Interactive Voice Assistant Overlay */}
+          <VoiceAssistantOverlay />
 
           {/* Native Mobile Bottom Tab Bar */}
           <NativeMobileTabBar />
