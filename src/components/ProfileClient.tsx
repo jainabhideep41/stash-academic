@@ -21,7 +21,11 @@ import {
   ExternalLink,
   Sparkles,
   Trash2,
+  Smartphone,
+  Download,
+  RefreshCw,
 } from "lucide-react";
+import { CURRENT_APP_VERSION, GITHUB_RELEASES_URL } from "@/lib/appVersion";
 
 interface ProfileClientProps {
   initialUser: {
@@ -497,6 +501,66 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   {keySaved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4 text-black" />}
                   <span>{keySaved ? "API Key Saved!" : "Save Gemini Key"}</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Software Version & In-App Updates Card */}
+          <div className="p-6 rounded-3xl bg-neutral-900/50 border border-neutral-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">App Version & Updates</h3>
+                  <p className="text-[11px] font-mono text-neutral-400">
+                    Stash Academic Mobile & Web Software Manager
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>v{CURRENT_APP_VERSION} Installed</span>
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 font-mono leading-relaxed">
+              Stash supports direct in-app software updates. Check for the newest releases containing hardware DND alarm features, AI assessment generators, and speed optimizations.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <a
+                href={GITHUB_RELEASES_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-neutral-400 hover:text-white font-mono flex items-center gap-1.5 transition"
+              >
+                <span>View Release Notes on GitHub</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
+                  className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Check for Updates</span>
+                </button>
+
+                <a
+                  href={`${GITHUB_RELEASES_URL}/download/v1.0.0-apk/Stash-Academic-Alarm-v1.0.apk`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-black" />
+                  <span>Download Latest APK</span>
+                </a>
               </div>
             </div>
           </div>

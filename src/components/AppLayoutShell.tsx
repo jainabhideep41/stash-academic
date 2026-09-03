@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { GlobalAlarmProvider } from "./GlobalAlarmProvider";
+import { AppUpdateModal } from "./AppUpdateModal";
 
 interface AppLayoutShellProps {
   children: React.ReactNode;
@@ -160,8 +161,23 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             </nav>
           </div>
 
-          {/* User Account Footer Block with Direct Profile Link */}
+          {/* User Account Footer Block with Direct Profile Link & Update Checker */}
           <div className="border-t border-neutral-800 pt-4 space-y-3">
+            {/* Version & Update Trigger Badge */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-neutral-900/70 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white text-xs font-mono transition group cursor-pointer"
+              title="Check for App Updates"
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-[11px] font-bold text-slate-300">v1.0.0</span>
+              </div>
+              <span className="text-[10px] text-purple-400 font-bold group-hover:underline">
+                Updates &rarr;
+              </span>
+            </button>
+
             <div className="flex items-center justify-between px-2">
               <Link
                 href="/profile"
@@ -210,6 +226,16 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-xs font-mono font-bold transition cursor-pointer"
+                title="Check for software updates"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>v1.0.0</span>
+              </button>
+
               <Link
                 href="/notes"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white text-xs font-bold transition"
@@ -243,6 +269,9 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 
           {/* Page Content Body */}
           <main className="p-4 sm:p-6 lg:p-8 flex-1">{children}</main>
+
+          {/* In-App Auto-Update Modal & Banners */}
+          <AppUpdateModal />
 
         </div>
 
