@@ -1,21 +1,31 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Stash Academic Portal - ProGuard & R8 Optimization Rules
+# Google Play Store / App Store Production Hardening
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Preserve Capacitor and Plugin Interfaces
+-keep public class com.getcapacitor.** { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    public <methods>;
+}
+-keepclassmembers class * {
+    @com.getcapacitor.PluginMethod public <methods>;
+    @com.getcapacitor.annotation.CapacitorPlugin public <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Preserve Native Alarm & Main Activity
+-keep class com.stash.academic.** { *; }
+-keepclassmembers class com.stash.academic.MainActivity {
+    public *;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Preserve Javascript Interfaces for Web-to-Native Bridge
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Preserve Annotations and Reflection Metadata
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# Suppress harmless warnings
+-dontwarn com.google.android.gms.**
+-dontwarn androidx.**

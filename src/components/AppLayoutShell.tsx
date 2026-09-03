@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { GlobalAlarmProvider } from "./GlobalAlarmProvider";
 import { AppUpdateModal } from "./AppUpdateModal";
+import { CURRENT_APP_VERSION } from "@/lib/appVersion";
 
 interface AppLayoutShellProps {
   children: React.ReactNode;
@@ -171,7 +172,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             >
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[11px] font-bold text-slate-300">v1.0.0</span>
+                <span className="text-[11px] font-bold text-slate-300">v{CURRENT_APP_VERSION}</span>
               </div>
               <span className="text-[10px] text-purple-400 font-bold group-hover:underline">
                 Updates &rarr;
@@ -233,7 +234,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
                 title="Check for software updates"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                <span>v1.0.0</span>
+                <span>v{CURRENT_APP_VERSION}</span>
               </button>
 
               <Link

@@ -1,9 +1,9 @@
 /**
  * App Version & In-App Auto-Updater Utility
- * Stash Academic Portal
+ * Stash Academic Portal (v1.1.0 Enterprise Security Edition)
  */
 
-export const CURRENT_APP_VERSION = "1.0.0";
+export const CURRENT_APP_VERSION = "1.1.0";
 export const GITHUB_REPO = "jainabhideep41/stash-academic";
 export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases`;
 
@@ -20,7 +20,7 @@ export interface AppUpdateInfo {
 
 /**
  * Clean version string for semver comparison
- * e.g., "v1.0.0-apk" -> [1, 0, 0]
+ * e.g., "v1.1.0-apk" -> [1, 1, 0]
  */
 function parseSemver(v: string): number[] {
   const match = v.replace(/^v/, "").split("-")[0].split(".");
@@ -52,9 +52,9 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo> {
     latestVersion: CURRENT_APP_VERSION,
     hasUpdate: false,
     releaseName: `Stash v${CURRENT_APP_VERSION}`,
-    releaseNotes: "You are running the latest version of Stash Academic.",
+    releaseNotes: "You are running the latest hardened security version of Stash Academic.",
     publishedAt: new Date().toISOString(),
-    apkDownloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0-apk/Stash-Academic-Alarm-v1.0.apk`,
+    apkDownloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.1.0-security/Stash-Academic-Alarm-v1.1.0.apk`,
     releaseUrl: `https://github.com/${GITHUB_REPO}/releases`,
   };
 
@@ -75,7 +75,7 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo> {
 
     const data = await res.json();
     const tagName: string = data.tag_name || "";
-    // Clean tag name, e.g. "v1.0.0-apk" -> "1.0.0"
+    // Clean tag name, e.g. "v1.1.0-security" -> "1.1.0"
     const remoteVersion = tagName.replace(/^v/, "").split("-")[0] || CURRENT_APP_VERSION;
     
     // Find .apk asset
@@ -91,7 +91,7 @@ export async function checkForAppUpdate(): Promise<AppUpdateInfo> {
       latestVersion: remoteVersion,
       hasUpdate,
       releaseName: data.name || `Stash v${remoteVersion}`,
-      releaseNotes: data.body || "Performance enhancements, DND alarm fixes, and academic tools update.",
+      releaseNotes: data.body || "Enterprise security hardening, DND alarm fixes, and academic tools update.",
       publishedAt: data.published_at || new Date().toISOString(),
       apkDownloadUrl,
       releaseUrl: data.html_url || GITHUB_RELEASES_URL,
