@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { DashboardTaskHub } from "@/components/DashboardTaskHub";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -246,32 +247,9 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Right Column: Deadlines & Quick Tasks */}
+          {/* Right Column: Deadlines & Quick Tasks Hub with Wake-Up Alarms */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2 font-display">
-              <Calendar className="w-5 h-5 text-white" />
-              Academic Tasks & Deadlines
-            </h2>
-
-            <div className="fused-card rounded-2xl p-5 space-y-4">
-              <div className="border-l-2 border-purple-500 pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-purple-400 uppercase tracking-widest">Due in 2 days</span>
-                <h4 className="text-sm font-bold text-white">Algorithms Homework 4</h4>
-                <p className="text-xs text-slate-400">CS 301 &bull; Dynamic Programming</p>
-              </div>
-
-              <div className="border-l-2 border-cyan-500 pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">Due Friday</span>
-                <h4 className="text-sm font-bold text-white">Database Project Phase 2</h4>
-                <p className="text-xs text-slate-400">CS 305 &bull; Schema ER Diagrams</p>
-              </div>
-
-              <div className="border-l-2 border-rose-500 pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-widest">Next Week</span>
-                <h4 className="text-sm font-bold text-white">Midterm Exam Revision</h4>
-                <p className="text-xs text-slate-400">MATH 202 &bull; Linear Algebra</p>
-              </div>
-            </div>
+            <DashboardTaskHub />
           </div>
 
         </div>
