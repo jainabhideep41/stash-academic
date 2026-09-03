@@ -9,6 +9,11 @@
     "cleartext": false
   },
   "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "823375870464-jogasafgbtj1h4nvk88tbjcrp08quu1b.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    },
     "LocalNotifications": {
       "smallIcon": "ic_stat_alarm",
       "iconColor": "#A855F7",

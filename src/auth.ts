@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
@@ -23,20 +24,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.AUTH_GITHUB_SECRET || "",
       allowDangerousEmailAccountLinking: true,
     }),
+    Credentials({
+      id: "google-native",
+      name: "Google Native",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        name: { label: "Name", type: "text" },
+        image: { label: "Image", type: "text" },
+        idToken: { label: "ID Token", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) return null;
+        const email = (credentials.email as string).toLowerCase().trim();
+        
+        // Upsert user in database if DB is attached
+        if (process.env.DATABASE_URL) {
+          try {
+            await prisma.user.upsert({
+              where: { email },
+              update: {
+                name: (credentials.name as string) || undefined,
+                image: (credentials.image as string) || undefined,
+              },
+              create: {
+                email,
+                name: (credentials.name as string) || "Student",
+                image: (credentials.image as string) || null,
+              },
+            });
+          } catch (e) {
+            console.warn("DB upsert fallback for native Google signin:", e);
+          }
+        }
+
+        return {
+          id: email,
+          email: email,
+          name: (credentials.name as string) || "Student",
+          image: (credentials.image as string) || null,
+        };
+      },
+    }),
   ],
   pages: {
     signIn: "/",
     error: "/",
   },
   callbacks: {
-    async jwt({ token, user, account, profile }) {
-      // Normalize user identity strictly by verified email
-      // This guarantees Google and GitHub logins with the same email address
-      // resolve to the EXACT same unified Stash student account!
+    async jwt({ token, user }) {
       if (user?.email) {
         const normalizedEmail = user.email.toLowerCase().trim();
         token.email = normalizedEmail;
-        token.sub = normalizedEmail; // Unified deterministic subject ID
+        token.sub = normalizedEmail;
       }
       return token;
     },

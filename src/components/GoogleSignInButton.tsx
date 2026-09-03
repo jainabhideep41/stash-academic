@@ -1,8 +1,11 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { performNativeGoogleSignIn, initNativeGoogleAuth } from "@/lib/nativeGoogleAuth";
+import { HapticEngine } from "@/lib/hapticEngine";
 
 interface GoogleSignInButtonProps {
   className?: string;
@@ -17,12 +20,44 @@ export function GoogleSignInButton({
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    initNativeGoogleAuth();
+  }, []);
+
   const handleSignIn = async () => {
     try {
+      HapticEngine.trigger("medium");
       setLoading(true);
+
+      // Check if running on Android/iOS native mobile app
+      if (Capacitor.isNativePlatform()) {
+        const googleUser = await performNativeGoogleSignIn();
+        if (googleUser && googleUser.email) {
+          HapticEngine.trigger("success");
+          // Direct native authentication into NextAuth session
+          const res = await signIn("google-native", {
+            email: googleUser.email,
+            name: googleUser.name || "Student",
+            image: googleUser.imageUrl || "",
+            idToken: googleUser.idToken || "",
+            callbackUrl,
+            redirect: false,
+          });
+
+          if (res?.ok) {
+            window.location.href = callbackUrl;
+            return;
+          }
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Fallback for Web browser
       await signIn("google", { callbackUrl });
     } catch (err) {
       console.error("Sign in failed", err);
+      HapticEngine.trigger("error");
       setLoading(false);
     }
   };
@@ -31,7 +66,7 @@ export function GoogleSignInButton({
     <button
       onClick={handleSignIn}
       disabled={loading}
-      className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-black font-bold bg-white hover:bg-neutral-200 border border-white transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
+      className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-black font-bold bg-white hover:bg-neutral-200 border border-white transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black active:scale-[0.98] cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
     >
       {loading ? (
         <Loader2 className="w-5 h-5 animate-spin text-black" />
@@ -55,7 +90,7 @@ export function GoogleSignInButton({
           />
         </svg>
       )}
-      <span>{loading ? "Redirecting to Google..." : buttonText}</span>
+      <span>{loading ? "Authenticating..." : buttonText}</span>
     </button>
   );
 }

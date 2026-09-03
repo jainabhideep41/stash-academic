@@ -1,4 +1,4 @@
-name: Build & Release Android APK (Native App Architecture)
+name: Build & Release Android APK (Native Google One-Tap Edition)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Native Mobile Android APK (Bottom TabBar & Sheet Modals)
+    name: Build Native Mobile Android APK (Native Google One-Tap & Mobile UI)
     runs-on: ubuntu-latest
 
     steps:
@@ -49,36 +49,32 @@ jobs:
       - name: 📦 Prepare APK Release Binary
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.3.0-Mobile.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Stash-Academic-v1.3.0-Mobile-APK
-          path: output_apk/Stash-Academic-v1.3.0-Mobile.apk
+          name: Stash-Academic-v1.4.0-GoogleNative-APK
+          path: output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
           if-no-files-found: error
 
-      - name: 🚀 Publish GitHub Release v1.3.0-mobile-ui
+      - name: 🚀 Publish GitHub Release v1.4.0-google-native
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.3.0-mobile-ui
-          name: "Stash Academic Mobile v1.3.0 (Native Mobile UI Redesign)"
+          tag_name: v1.4.0-google-native
+          name: "Stash Academic Mobile v1.4.0 (Native Google One-Tap Sign-In)"
           body: |
-            ## 📱 Stash Academic Mobile v1.3.0 (Native App UI Architecture)
+            ## 📱 Stash Academic Mobile v1.4.0 (Native Google One-Tap Sign-In)
             
-            Redesigned specifically to match the mobile UX patterns of tier-1 mobile apps (Linear, Things 3, Notion Mobile).
-            
-            ### 🎨 Native UI & Mobile Architecture:
-            - **📱 Dedicated Mobile Top App Bar**: Fixed AMOLED black header with avatar status, title, and quick update pill.
-            - **🗂️ Segmented Control Task Filters**: Instant tab switching between `Active`, `Today`, `Done`, and `All`.
-            - **📑 Native Mobile Bottom Action Sheet**: Create Task and Alarm modals slide up from the bottom with iOS grabber handles.
-            - **➕ Floating Action Button (FAB)**: 1-thumb touch creation floating above the bottom tab bar.
-            - **📳 Micro-Haptics on Every Interaction**: Tactile feedback on checkbox toggles, tab switches, alarm actions, and button presses.
-            - **🛡️ Hardware DND Bypass & Silent Mode Alarm**: Rings at full volume with mandatory anti-sleep acknowledgment.
+            ### 🔐 What's New:
+            - **⚡ Native Google Play Services One-Tap Account Picker**: Google login now opens a native Android bottom sheet right inside the app! No more redirecting to external Google Chrome tabs.
+            - **📱 Native Mobile App UI**: Dedicated top app bar, segmented control task filters, iOS/Android bottom action sheets, and floating action button (FAB).
+            - **📳 Micro-Haptic Feedback**: Tactile responses on touch and toggle interactions.
+            - **🛡️ Hardware DND Bypass & Silent Mode Alarm**: High-urgency academic alarms with mandatory typing verification.
             
             ### 📥 Download & Install:
-            Download `Stash-Academic-v1.3.0-Mobile.apk` below, tap to install on your Android device.
-          files: output_apk/Stash-Academic-v1.3.0-Mobile.apk
+            Download `Stash-Academic-v1.4.0-GoogleNative.apk` below, tap to install on your Android device.
+          files: output_apk/Stash-Academic-v1.4.0-GoogleNative.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
