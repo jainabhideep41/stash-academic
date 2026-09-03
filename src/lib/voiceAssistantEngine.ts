@@ -1,85 +1,195 @@
 /**
- * Voice Assistant & Speech Synthesis Engine (Alexa-Style Female Voice + Web Speech STT)
+ * Voice Assistant & Speech Synthesis Engine with Multiple Voice Personas
+ * Alexa US, Alexa British, Alexa Aussie, Calm Morning, and Drill Commander
  * Powered by Google Gemini AI & Web Speech API
  */
 
 import { loadTasks } from "./taskAlarmStorage";
 
-export interface VoiceAssistantState {
-  isListening: boolean;
-  isSpeaking: boolean;
-  transcript: string;
-  response: string;
-  error?: string;
+export type VoicePersona =
+  | "alexa_us"
+  | "alexa_uk"
+  | "alexa_au"
+  | "alexa_calm"
+  | "alexa_drill";
+
+export interface VoicePersonaInfo {
+  id: VoicePersona;
+  name: string;
+  accent: string;
+  description: string;
+  iconText: string;
+  pitch: number;
+  rate: number;
 }
+
+export const VOICE_PERSONA_OPTIONS: VoicePersonaInfo[] = [
+  {
+    id: "alexa_us",
+    name: "Amazon Alexa (US)",
+    accent: "US English",
+    description: "Warm, clear, and articulate energetic assistant",
+    iconText: "🎙️",
+    pitch: 1.15,
+    rate: 1.02,
+  },
+  {
+    id: "alexa_uk",
+    name: "Alexa British (UK)",
+    accent: "UK English",
+    description: "Crisp, polite, and refined academic tone",
+    iconText: "🇬🇧",
+    pitch: 1.1,
+    rate: 1.0,
+  },
+  {
+    id: "alexa_au",
+    name: "Alexa Aussie (AU)",
+    accent: "Australian",
+    description: "Friendly, upbeat, and motivating voice",
+    iconText: "🦘",
+    pitch: 1.18,
+    rate: 1.05,
+  },
+  {
+    id: "alexa_calm",
+    name: "Calm Morning Wake",
+    accent: "Gentle",
+    description: "Soothing, peaceful, and soft-spoken wake-up",
+    iconText: "🌅",
+    pitch: 0.95,
+    rate: 0.9,
+  },
+  {
+    id: "alexa_drill",
+    name: "Drill Sergeant Alarm",
+    accent: "High Urgency",
+    description: "Fast, loud, commanding wake-up alert",
+    iconText: "🎖️",
+    pitch: 1.25,
+    rate: 1.2,
+  },
+];
+
+const VOICE_PERSONA_KEY = "stash_selected_voice_persona";
 
 class VoiceAssistantEngine {
   private synth: SpeechSynthesis | null = null;
   private recognition: any = null;
-  private selectedVoice: SpeechSynthesisVoice | null = null;
-  private isInitialized = false;
+  private currentPersona: VoicePersona = "alexa_us";
 
   constructor() {
     if (typeof window !== "undefined") {
       this.synth = window.speechSynthesis || null;
       this.initSpeechRecognition();
-      this.loadAlexaVoice();
+      this.loadSavedPersona();
     }
   }
 
-  // Load and select high-definition female voice resembling Amazon Alexa
-  public loadAlexaVoice(): SpeechSynthesisVoice | null {
-    if (!this.synth) return null;
+  public getSavedPersona(): VoicePersona {
+    if (typeof window === "undefined") return "alexa_us";
+    try {
+      const saved = localStorage.getItem(VOICE_PERSONA_KEY) as VoicePersona;
+      if (saved && VOICE_PERSONA_OPTIONS.some((p) => p.id === saved)) {
+        return saved;
+      }
+    } catch {}
+    return "alexa_us";
+  }
 
+  public setPersona(persona: VoicePersona): void {
+    this.currentPersona = persona;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(VOICE_PERSONA_KEY, persona);
+        window.dispatchEvent(
+          new CustomEvent("stash_voice_persona_updated", { detail: persona })
+        );
+      } catch {}
+    }
+  }
+
+  private loadSavedPersona() {
+    this.currentPersona = this.getSavedPersona();
+  }
+
+  // Find matching synthesis voice based on persona accent
+  private matchVoiceForPersona(persona: VoicePersona): SpeechSynthesisVoice | null {
+    if (!this.synth) return null;
     const voices = this.synth.getVoices();
     if (voices.length === 0) return null;
 
-    // Prioritized list of high-quality, friendly female English voices
-    const preferredVoices = [
-      "Google UK English Female",
-      "Microsoft Jenny Online (Natural) - English (United States)",
-      "Microsoft Aria Online (Natural) - English (United States)",
-      "Microsoft Jenny - English (United States)",
-      "Google US English",
-      "Samantha",
-      "Victoria",
-      "Karen",
-      "Moira",
-      "Tessa",
-      "Zira",
-      "en-US-Neural2-F",
-      "en-GB-Neural2-F",
-    ];
+    let targetLang = "en-US";
+    let preferredNames: string[] = [];
 
-    let match: SpeechSynthesisVoice | undefined;
+    switch (persona) {
+      case "alexa_uk":
+        targetLang = "en-GB";
+        preferredNames = [
+          "Google UK English Female",
+          "Microsoft Libby Online (Natural)",
+          "Microsoft Sonia Online (Natural)",
+          "Victoria",
+          "en-GB",
+        ];
+        break;
+      case "alexa_au":
+        targetLang = "en-AU";
+        preferredNames = [
+          "Google Australian English Female",
+          "Microsoft Natasha Online (Natural)",
+          "Karen",
+          "en-AU",
+        ];
+        break;
+      case "alexa_calm":
+        preferredNames = [
+          "Microsoft Jenny Online (Natural)",
+          "Samantha",
+          "Google US English",
+        ];
+        break;
+      case "alexa_drill":
+        preferredNames = [
+          "Google UK English Female",
+          "Microsoft Aria Online (Natural)",
+          "Zira",
+        ];
+        break;
+      case "alexa_us":
+      default:
+        preferredNames = [
+          "Google UK English Female",
+          "Microsoft Jenny Online (Natural)",
+          "Microsoft Aria Online (Natural)",
+          "Google US English",
+          "Samantha",
+          "Victoria",
+          "Zira",
+        ];
+        break;
+    }
 
-    // 1. Check exact preferred names
-    for (const name of preferredVoices) {
-      match = voices.find(
-        (v) => v.name.toLowerCase().includes(name.toLowerCase()) || v.name === name
+    // 1. Check exact name matches
+    for (const name of preferredNames) {
+      const match = voices.find((v) =>
+        v.name.toLowerCase().includes(name.toLowerCase())
       );
-      if (match) break;
+      if (match) return match;
     }
 
-    // 2. Fallback: Any English voice marked as female
-    if (!match) {
-      match = voices.find(
-        (v) =>
-          v.lang.startsWith("en") &&
-          (v.name.toLowerCase().includes("female") ||
-            v.name.toLowerCase().includes("girl") ||
-            v.name.toLowerCase().includes("woman") ||
-            v.name.toLowerCase().includes("natural"))
-      );
-    }
+    // 2. Check language match
+    const langMatch = voices.find(
+      (v) =>
+        v.lang.toLowerCase().startsWith(targetLang.toLowerCase()) &&
+        (v.name.toLowerCase().includes("female") ||
+          v.name.toLowerCase().includes("natural") ||
+          v.name.toLowerCase().includes("girl"))
+    );
+    if (langMatch) return langMatch;
 
-    // 3. Fallback: First English voice
-    if (!match) {
-      match = voices.find((v) => v.lang.startsWith("en"));
-    }
-
-    this.selectedVoice = match || voices[0] || null;
-    return this.selectedVoice;
+    // 3. Fallback: Any English voice
+    return voices.find((v) => v.lang.startsWith("en")) || voices[0] || null;
   }
 
   // Initialize Speech-to-Text Recognition
@@ -99,7 +209,7 @@ class VoiceAssistantEngine {
     }
   }
 
-  // Speak text with Alexa-style pitch and cadence
+  // Speak text with the selected voice persona parameters
   public speakAlexaVoice(
     text: string,
     onStart?: () => void,
@@ -112,10 +222,10 @@ class VoiceAssistantEngine {
     }
 
     try {
-      this.synth.cancel(); // Stop any pending speech
+      this.synth.cancel();
 
       const cleanText = text
-        .replace(/[*#`_~]/g, "") // remove markdown syntax
+        .replace(/[*#`_~]/g, "")
         .replace(/https?:\/\/\S+/g, "link")
         .trim();
 
@@ -125,19 +235,17 @@ class VoiceAssistantEngine {
       }
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
+      const personaInfo =
+        VOICE_PERSONA_OPTIONS.find((p) => p.id === this.currentPersona) ||
+        VOICE_PERSONA_OPTIONS[0];
 
-      // Re-query voice if null
-      if (!this.selectedVoice) {
-        this.loadAlexaVoice();
+      const voice = this.matchVoiceForPersona(this.currentPersona);
+      if (voice) {
+        utterance.voice = voice;
       }
 
-      if (this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      }
-
-      // Calibrated parameters for natural Alexa-like tone
-      utterance.pitch = 1.15; // Slightly higher, youthful, upbeat female pitch
-      utterance.rate = 1.02;  // Fluent, natural speaking tempo
+      utterance.pitch = personaInfo.pitch;
+      utterance.rate = personaInfo.rate;
       utterance.volume = 1.0;
 
       utterance.onstart = () => {
@@ -231,13 +339,11 @@ class VoiceAssistantEngine {
   public async queryGeminiVoiceAssistant(userQuery: string): Promise<string> {
     if (typeof window === "undefined") return "I am ready to help with your studies.";
 
-    // 1. Retrieve stored Gemini API Key
     let apiKey = "";
     try {
       apiKey = localStorage.getItem("stash_gemini_api_key") || "";
     } catch {}
 
-    // 2. Gather student academic context (tasks, deadlines, courses)
     const tasks = loadTasks();
     const pendingTasks = tasks.filter((t) => t.status === "pending" || t.status === "snoozed");
     const taskSummary = pendingTasks
@@ -245,18 +351,18 @@ class VoiceAssistantEngine {
       .map((t) => `${t.title} (${t.category}, due ${t.dueDate} at ${t.dueTime}, priority: ${t.priority})`)
       .join("; ");
 
+    const personaInfo =
+      VOICE_PERSONA_OPTIONS.find((p) => p.id === this.currentPersona) ||
+      VOICE_PERSONA_OPTIONS[0];
+
     const systemInstruction = `
-You are the voice assistant for Stash Academic Portal, named "Stash".
-You speak like Amazon Alexa: friendly, concise, intelligent, encouraging, and articulate.
-Your responses will be read aloud via Text-to-Speech, so:
-- Keep your answers between 1 to 3 short sentences (max 40 words).
-- Speak naturally with no markdown bullet points, stars, or code blocks.
-- Answer academic questions, help with deadlines, or give brief explanations.
-- Student's current active tasks: ${taskSummary || "No upcoming deadlines right now."}
+You are the voice assistant for Stash Academic Portal, speaking with the personality: "${personaInfo.name}" (${personaInfo.description}).
+Keep your responses between 1 to 3 short sentences (max 40 words), perfectly formatted for voice output.
+Do not use markdown formatting, bullets, asterisks, or code blocks.
+Student's current active tasks: ${taskSummary || "No upcoming deadlines right now."}
 `.trim();
 
     if (!apiKey) {
-      // Fallback response if no custom key is provided
       const lower = userQuery.toLowerCase();
       if (lower.includes("task") || lower.includes("deadline") || lower.includes("alarm") || lower.includes("schedule")) {
         if (pendingTasks.length > 0) {
@@ -271,7 +377,6 @@ Your responses will be read aloud via Text-to-Speech, so:
       return `I heard you ask: "${userQuery}". To enable full conversational AI, please save your Gemini API key in Student Profile.`;
     }
 
-    // Call Gemini API
     const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest"];
     for (const model of models) {
       try {

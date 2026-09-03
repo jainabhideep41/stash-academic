@@ -19,6 +19,7 @@ import {
 import { voiceAssistant } from "@/lib/voiceAssistantEngine";
 import { NativeAlarmBridge } from "@/lib/nativeAlarmBridge";
 import { HapticEngine } from "@/lib/hapticEngine";
+import { AlarmSoundPickerModal } from "./AlarmSoundPickerModal";
 import {
   Calendar,
   Clock,
@@ -30,12 +31,15 @@ import {
   Volume2,
   Mic,
   Sparkles,
+  ChevronRight,
+  Music,
 } from "lucide-react";
 
 export function DashboardTaskHub() {
   const [tasks, setTasks] = useState<AcademicTask[]>([]);
   const [filter, setFilter] = useState<"pending" | "completed" | "today" | "all">("pending");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
 
   // Form State
   const [title, setTitle] = useState("");
@@ -44,7 +48,7 @@ export function DashboardTaskHub() {
   const [dueTime, setDueTime] = useState("08:00");
   const [category, setCategory] = useState<AcademicTask["category"]>("assignment");
   const [priority, setPriority] = useState<AcademicTask["priority"]>("high");
-  const [alarmTone, setAlarmTone] = useState<AlarmTone>("digital");
+  const [alarmTone, setAlarmTone] = useState<AlarmTone>("samsung_horizon");
   const [voiceAlarmEnabled, setVoiceAlarmEnabled] = useState(true);
   const [durationSeconds, setDurationSeconds] = useState(90);
   const [challengeText, setChallengeText] = useState("");
@@ -197,14 +201,15 @@ export function DashboardTaskHub() {
     }
   };
 
-  const getToneIcon = (tone?: AlarmTone) => {
+  const getToneInfo = (tone?: AlarmTone) => {
     const match = ALARM_TONE_OPTIONS.find((opt) => opt.id === tone);
-    return match?.iconText || "📟";
+    return match || ALARM_TONE_OPTIONS[0];
   };
 
   const activeCount = tasks.filter((t) => t.status === "pending" || t.status === "snoozed").length;
   const todayCount = tasks.filter((t) => t.dueDate === todayStr).length;
   const completedCount = tasks.filter((t) => t.status === "completed").length;
+  const currentToneInfo = getToneInfo(alarmTone);
 
   return (
     <div className="space-y-4">
@@ -216,7 +221,7 @@ export function DashboardTaskHub() {
             <span>Academic Tasks &amp; Alarms</span>
           </h2>
           <p className="text-[11px] font-mono text-neutral-400">
-            {activeCount} Active &bull; 1.5+ Min DND &amp; Voice Alarms
+            {activeCount} Active &bull; 60+ Sounds &bull; 1.5+ Min DND &amp; Voice Alarms
           </p>
         </div>
         
@@ -246,7 +251,7 @@ export function DashboardTaskHub() {
         </div>
       </div>
 
-      {/* iOS / Material 3 Style Segmented Control Filter Bar */}
+      {/* Segmented Control Filter Bar */}
       <div className="p-1 rounded-2xl bg-neutral-900/90 border border-neutral-800 flex items-center justify-between text-xs font-mono font-bold">
         {[
           { key: "pending", label: "Active", count: activeCount },
@@ -308,6 +313,7 @@ export function DashboardTaskHub() {
           filteredTasks.map((t) => {
             const isCompleted = t.status === "completed";
             const timeString = getTimeRemainingString(t);
+            const toneInfo = getToneInfo(t.alarmTone);
 
             return (
               <div
@@ -320,7 +326,7 @@ export function DashboardTaskHub() {
               >
                 <div className="flex items-start gap-3">
                   
-                  {/* Native Touch Checkbox */}
+                  {/* Touch Checkbox */}
                   <button
                     type="button"
                     onClick={() => handleToggleStatus(t.id)}
@@ -347,8 +353,8 @@ export function DashboardTaskHub() {
                           {t.priority}
                         </span>
                         <span className="text-[9px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 flex items-center gap-1">
-                          <span>{getToneIcon(t.alarmTone)}</span>
-                          <span>{t.alarmTone || "digital"}</span>
+                          <span>{toneInfo.iconText}</span>
+                          <span className="truncate max-w-[120px]">{toneInfo.name}</span>
                         </span>
                         {t.voiceAlarmEnabled !== false && (
                           <span className="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20 flex items-center gap-0.5">
@@ -423,7 +429,7 @@ export function DashboardTaskHub() {
         )}
       </div>
 
-      {/* Floating Action Button (FAB) on Mobile screens (< md) */}
+      {/* Floating Action Button (FAB) on Mobile screens */}
       <button
         type="button"
         onClick={() => {
@@ -441,7 +447,7 @@ export function DashboardTaskHub() {
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-neutral-950 border-t md:border border-neutral-800 rounded-t-3xl md:rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl space-y-5 animate-in slide-in-from-bottom duration-300">
             
-            {/* Mobile Sheet Grabber Handle */}
+            {/* Grabber Handle */}
             <div className="w-12 h-1.5 rounded-full bg-neutral-700 mx-auto -mt-2 mb-2 md:hidden" />
 
             {/* Modal Header */}
@@ -455,7 +461,7 @@ export function DashboardTaskHub() {
                     Schedule Task Alarm
                   </h3>
                   <p className="text-[11px] font-mono text-neutral-400">
-                    Bypasses phone DND with Alexa voice reminders &amp; verification
+                    Bypasses phone DND with Alexa voice reminders &amp; 60+ sounds
                   </p>
                 </div>
               </div>
@@ -580,7 +586,7 @@ export function DashboardTaskHub() {
                       <span>Alexa Voice Alarm</span>
                     </span>
                     <p className="text-[10px] text-neutral-400 font-mono">
-                      Speaks task reminder aloud
+                      Speaks reminder aloud
                     </p>
                   </div>
                   <input
@@ -607,46 +613,56 @@ export function DashboardTaskHub() {
                 </div>
               </div>
 
-              {/* Alarm Tone Selector */}
+              {/* 60+ Alarm Sounds Trigger Card */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
                   <span>Custom Alarm Ringtone</span>
-                  <span className="text-[10px] text-purple-400 font-normal">Tap to preview sound</span>
+                  <span className="text-[10px] text-purple-400 font-normal">60+ Phone &amp; Siren Sounds</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {ALARM_TONE_OPTIONS.map((opt) => {
-                    const isSelected = alarmTone === opt.id;
-                    const isPlaying = previewPlaying === opt.id;
 
-                    return (
-                      <button
-                        type="button"
-                        key={opt.id}
-                        onClick={() => {
-                          setAlarmTone(opt.id);
-                          handleTogglePreviewTone(opt.id);
-                        }}
-                        className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
-                          isSelected
-                            ? "bg-purple-500/15 border-purple-500 text-white shadow-sm"
-                            : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="text-base">{opt.iconText}</span>
-                          <div className="truncate">
-                            <p className="text-xs font-bold truncate leading-tight">{opt.name}</p>
-                            <p className="text-[10px] font-mono text-neutral-500 truncate">{opt.description}</p>
-                          </div>
-                        </div>
-                        <Volume2 className={`w-3.5 h-3.5 shrink-0 ${isPlaying ? "text-purple-400 animate-pulse" : "text-neutral-600"}`} />
-                      </button>
-                    );
-                  })}
+                <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 truncate">
+                    <span className="text-2xl">{currentToneInfo.iconText}</span>
+                    <div className="truncate">
+                      <h4 className="text-xs font-bold text-white truncate font-display">
+                        {currentToneInfo.name}
+                      </h4>
+                      <p className="text-[10px] font-mono text-neutral-400 truncate">
+                        {currentToneInfo.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePreviewTone(alarmTone)}
+                      className={`p-2 rounded-xl border text-xs font-mono transition cursor-pointer active:scale-95 ${
+                        previewPlaying === alarmTone
+                          ? "bg-purple-500 text-white border-purple-400 animate-pulse"
+                          : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700"
+                      }`}
+                      title="Preview Current Tone"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        HapticEngine.trigger("medium");
+                        setIsSoundPickerOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer shadow-sm"
+                    >
+                      <Music className="w-3.5 h-3.5 text-black" />
+                      <span>Browse 60+ Sounds</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Anti-Sleep Typing Challenge */}
+              {/* Anti-Sleep Challenge */}
               <div className="space-y-1">
                 <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
                   <span>Anti-Sleep Challenge Text</span>
@@ -684,6 +700,17 @@ export function DashboardTaskHub() {
           </div>
         </div>
       )}
+
+      {/* 60+ Sounds Picker Modal */}
+      <AlarmSoundPickerModal
+        isOpen={isSoundPickerOpen}
+        selectedTone={alarmTone}
+        onSelect={(t) => {
+          setAlarmTone(t);
+          setDefaultAlarmTone(t);
+        }}
+        onClose={() => setIsSoundPickerOpen(false)}
+      />
 
     </div>
   );

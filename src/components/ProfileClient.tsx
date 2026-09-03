@@ -28,10 +28,13 @@ import {
   Volume2,
   Lock,
   AlarmClock,
+  Music,
 } from "lucide-react";
 import { CURRENT_APP_VERSION, GITHUB_RELEASES_URL } from "@/lib/appVersion";
-import { getAlarmAckMode, setAlarmAckMode, AlarmAckMode } from "@/lib/taskAlarmStorage";
-import { voiceAssistant } from "@/lib/voiceAssistantEngine";
+import { getAlarmAckMode, setAlarmAckMode, AlarmAckMode, getDefaultAlarmTone, setDefaultAlarmTone } from "@/lib/taskAlarmStorage";
+import { voiceAssistant, VOICE_PERSONA_OPTIONS, VoicePersona } from "@/lib/voiceAssistantEngine";
+import { ALARM_TONE_OPTIONS } from "@/lib/alarmAudioEngine";
+import { AlarmSoundPickerModal } from "./AlarmSoundPickerModal";
 import { HapticEngine } from "@/lib/hapticEngine";
 
 interface ProfileClientProps {
@@ -80,7 +83,10 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
   const [ackMode, setAckModeState] = useState<AlarmAckMode>("type_only");
   const [ackSaved, setAckSaved] = useState(false);
 
-  // Alexa Voice Test State
+  // Voice Persona State
+  const [selectedPersona, setSelectedPersona] = useState<VoicePersona>("alexa_us");
+  const [selectedTone, setSelectedTone] = useState("samsung_horizon");
+  const [isSoundPickerOpen, setIsSoundPickerOpen] = useState(false);
   const [isPlayingVoicePreview, setIsPlayingVoicePreview] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -88,13 +94,15 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
   const [copiedUid, setCopiedUid] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Load once on initial mount
+  // Load once on mount
   useEffect(() => {
     if (!initialGeminiKey) {
       const saved = localStorage.getItem("stash_gemini_api_key");
       if (saved) setGeminiKey(saved);
     }
     setAckModeState(getAlarmAckMode());
+    setSelectedPersona(voiceAssistant.getSavedPersona());
+    setSelectedTone(getDefaultAlarmTone());
   }, []);
 
   const handleSelectAckMode = (mode: AlarmAckMode) => {
@@ -105,10 +113,18 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
     setTimeout(() => setAckSaved(false), 2000);
   };
 
+  const handleSelectPersona = (persona: VoicePersona) => {
+    HapticEngine.trigger("selection");
+    setSelectedPersona(persona);
+    voiceAssistant.setPersona(persona);
+    voiceAssistant.speakAlexaVoice(`Voice updated to ${VOICE_PERSONA_OPTIONS.find(p => p.id === persona)?.name}. How can I assist you?`);
+  };
+
   const handleTestAlexaVoice = () => {
     HapticEngine.trigger("medium");
     setIsPlayingVoicePreview(true);
-    const previewMessage = `Hello ${name || "Student"}! I am your Stash academic voice assistant. I can announce your wake-up alarms and answer your study questions.`;
+    const persona = VOICE_PERSONA_OPTIONS.find((p) => p.id === selectedPersona) || VOICE_PERSONA_OPTIONS[0];
+    const previewMessage = `Hello ${name || "Student"}! I am your ${persona.name}. I am ready to announce your wake-up alarms with 60 distinct ringtones.`;
     voiceAssistant.speakAlexaVoice(
       previewMessage,
       () => setIsPlayingVoicePreview(true),
@@ -182,6 +198,8 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
     }
   };
 
+  const currentToneMatch = ALARM_TONE_OPTIONS.find((t) => t.id === selectedTone) || ALARM_TONE_OPTIONS[0];
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       
@@ -191,7 +209,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
           Student Profile &amp; Preferences
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Manage your verified academic credentials, alarm disarm challenges, and Alexa voice assistant settings.
+          Manage your verified academic credentials, 60+ alarm sounds, disarm challenges, and voice assistant settings.
         </p>
       </div>
 
@@ -266,7 +284,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
           </div>
         </div>
 
-        {/* Right 2 Columns: Editable Details, Voice Settings & Alarm Preferences */}
+        {/* Right 2 Columns */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* 1. Academic Enrollment Credentials */}
@@ -389,7 +407,68 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
             )}
           </div>
 
-          {/* 2. Alarm Acknowledgment & Disarm Customization Card (Requested Feature) */}
+          {/* 2. 60+ Alarm Sounds Library & Default Tone */}
+          <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-purple-500/20">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                  <Music className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-display">
+                    60+ Alarm Sounds Library
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Samsung, Xiaomi HyperOS, Apple, Sirens, Marimba &amp; Zen
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  HapticEngine.trigger("medium");
+                  setIsSoundPickerOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 text-black font-bold text-xs transition shadow-sm cursor-pointer"
+              >
+                Browse All 60 Sounds
+              </button>
+            </div>
+
+            {/* Current Default Tone Preview Card */}
+            <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{currentToneMatch.iconText}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white font-display">
+                      Default Tone: {currentToneMatch.name}
+                    </span>
+                    <span className="px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 text-[9px] font-mono uppercase font-bold">
+                      {currentToneMatch.category}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-slate-400 mt-0.5">
+                    {currentToneMatch.description}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  HapticEngine.trigger("medium");
+                  setIsSoundPickerOpen(true);
+                }}
+                className="text-xs text-purple-400 hover:text-purple-300 font-mono font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <span>Change &rarr;</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Alarm Acknowledgment & Disarm Customization */}
           <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-rose-500/20">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
@@ -412,10 +491,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
               )}
             </div>
 
-            {/* 4 Customization Options */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              
-              {/* Option 1: Confirmation Message Type Only */}
               <button
                 type="button"
                 onClick={() => handleSelectAckMode("type_only")}
@@ -436,7 +512,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 </p>
               </button>
 
-              {/* Option 2: Voice Confirmation Only */}
               <button
                 type="button"
                 onClick={() => handleSelectAckMode("voice_only")}
@@ -457,7 +532,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 </p>
               </button>
 
-              {/* Option 3: Both Required */}
               <button
                 type="button"
                 onClick={() => handleSelectAckMode("both")}
@@ -478,7 +552,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 </p>
               </button>
 
-              {/* Option 4: Neither (Standard 1-tap) */}
               <button
                 type="button"
                 onClick={() => handleSelectAckMode("neither")}
@@ -498,11 +571,10 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                   Standard alarm behavior: Turns off immediately with 1 tap on the dismiss button.
                 </p>
               </button>
-
             </div>
           </div>
 
-          {/* 3. Alexa-Style Voice Assistant & Gemini AI Key */}
+          {/* 4. Multiple Alexa Voice Personas & Gemini Key */}
           <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-5 border border-cyan-500/20">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
@@ -511,10 +583,10 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white font-display">
-                    Alexa Voice Assistant &amp; Gemini AI
+                    Voice Assistant Persona
                   </h3>
                   <p className="text-xs text-slate-400">
-                    High-definition female TTS voice + Google Gemini intelligence
+                    Choose your AI assistant vocal tone and accent
                   </p>
                 </div>
               </div>
@@ -524,11 +596,44 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
               >
                 <Volume2 className={`w-3.5 h-3.5 ${isPlayingVoicePreview ? "animate-pulse text-cyan-400" : ""}`} />
-                <span>{isPlayingVoicePreview ? "Speaking..." : "Test Alexa Voice"}</span>
+                <span>{isPlayingVoicePreview ? "Speaking..." : "Preview Voice"}</span>
               </button>
             </div>
 
-            <div className="space-y-3">
+            {/* Persona Selectors */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {VOICE_PERSONA_OPTIONS.map((persona) => {
+                const isSelected = selectedPersona === persona.id;
+                return (
+                  <button
+                    key={persona.id}
+                    type="button"
+                    onClick={() => handleSelectPersona(persona.id)}
+                    className={`p-3.5 rounded-2xl border text-left transition active:scale-95 cursor-pointer space-y-1 ${
+                      isSelected
+                        ? "bg-cyan-500/15 border-cyan-500 ring-2 ring-cyan-500/30 shadow-md"
+                        : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>{persona.iconText}</span>
+                        <span className="text-xs font-bold text-white font-display">
+                          {persona.name}
+                        </span>
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+                    </div>
+                    <p className="text-[10px] font-mono text-neutral-400">
+                      {persona.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Gemini Key Config */}
+            <div className="space-y-3 pt-3 border-t border-white/10">
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -562,9 +667,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                     {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed font-mono">
-                  Saved locally and used for conversational voice queries, assessment generation, and voice alarms.
-                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -590,7 +692,7 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
             </div>
           </div>
 
-          {/* 4. Software Version & In-App Updates Card */}
+          {/* 5. Software Version & Updates */}
           <div className="p-6 rounded-3xl bg-neutral-900/50 border border-neutral-800 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
               <div className="flex items-center gap-2.5">
@@ -612,10 +714,6 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 font-mono leading-relaxed">
-              Stash supports direct in-app updates. Check for the newest releases containing hardware DND voice alarms, Alexa TTS assistant, and speed optimizations.
-            </p>
-
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <a
                 href={GITHUB_RELEASES_URL}
@@ -627,22 +725,32 @@ export function ProfileClient({ initialUser, studentDetails, initialGeminiKey = 
                 <ExternalLink className="w-3 h-3" />
               </a>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
-                  className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Check for Updates</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("stash_check_updates"))}
+                className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                <span>Check for Updates</span>
+              </button>
             </div>
           </div>
 
         </div>
 
       </div>
+
+      {/* 60+ Sounds Picker Modal */}
+      <AlarmSoundPickerModal
+        isOpen={isSoundPickerOpen}
+        selectedTone={selectedTone}
+        onSelect={(t) => {
+          setSelectedTone(t);
+          setDefaultAlarmTone(t);
+        }}
+        onClose={() => setIsSoundPickerOpen(false)}
+      />
+
     </div>
   );
 }

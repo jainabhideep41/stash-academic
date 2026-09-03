@@ -1,4 +1,4 @@
-name: Build & Release Android APK (v2.0.0)
+name: Build & Release Android APK (v2.1.0)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Android APK (v2.0.0)
+    name: Build Android APK (v2.1.0)
     runs-on: ubuntu-latest
 
     steps:
@@ -49,44 +49,40 @@ jobs:
       - name: 📦 Prepare APK Release Binary
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-v2.0.0.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-v2.1.0.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Stash-v2.0.0-APK
-          path: output_apk/Stash-v2.0.0.apk
+          name: Stash-v2.1.0-APK
+          path: output_apk/Stash-v2.1.0.apk
           if-no-files-found: error
 
-      - name: 🚀 Publish GitHub Release v2.0.0
+      - name: 🚀 Publish GitHub Release v2.1.0
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v2.0.0
-          name: "Stash v2.0.0"
+          tag_name: v2.1.0
+          name: "Stash v2.1.0"
           body: |
-            ## 🚀 Stash v2.0.0 (Alexa Voice Assistant & Voice Alarms)
+            ## 🚀 Stash v2.1.0 (60+ Phone & Extreme Alarm Sounds Library + Multi-Voice Personas)
             
-            ### 🎙️ Voice Assistant & Conversational Intelligence:
-            - **Alexa-Style Voice Engine**: Expressive female Text-To-Speech (TTS) voice with calibrated acoustic parameters.
-            - **Conversational Gemini Integration**: Seamless voice Q&A answering academic questions, reviewing upcoming tasks, and explaining complex concepts.
-            - **Interactive Voice Overlay**: Pulsing voice orb, live transcript bubbles, and audio waveform animations.
+            ### 🔊 60+ Authentic Alarm Sounds Library:
+            - **📱 Samsung & Xiaomi Classics (12 Sounds)**: Samsung Horizon, Samsung Homecoming, Xiaomi Fireflies, Xiaomi Morning Glory, Xiaomi Sweet Dream, Apple Radar, Apple Apex, Apple Wind Chimes, Pixel Zen Dawn, Samsung Cosmos, Xiaomi Mountain Breeze, Pixel Voyager.
+            - **🚨 Extreme Sirens & Wake-Up (12 Sounds)**: Nuclear Meltdown Siren, Industrial Air Horn, Submarine Klaxon, Fire Evacuation Alarm, DEFCON 1 Hazard, Emergency Police Interceptor, 120Hz Buzzer, Ultrasonic Screamer, Shockwave Strobe, Ambulance Yelp, Tornado Horn, Drill Sergeant Staccato.
+            - **📟 Digital Clocks & Electronic (12 Sounds)**: Classic 4-Burst Beep, High-Speed Clock Ticker, 80s Vintage Casio, 8-Bit Retro Jump, Cyberpunk Glitch, Matrix Data Stream, Deep Sea Sonar, 90s Telecom Bell, Pulsar Beacon, Techno Beat Drop, Synthwave Lead, Arcade Extra Life.
+            - **🎹 Melodic, Marimba & Orchestral (12 Sounds)**: Sunny Marimba Groove, African Kalimba, Jazz Vibraphone, Grand Piano Arpeggio, Glockenspiel, Celesta Fairytale, Angelic Harp, Westminster Big Ben Chimes, Cathedral Bells, Steel Drum, Xylophone, Royal Fanfare.
+            - **🧘 Zen, Nature & Singing Bowls (12 Sounds)**: Tibetan Singing Bowl, Temple Bronze Gong, Zen Bamboo Flute, Raindrops, Morning Songbirds, Deep Ocean Swell, Kyoto Water Rocker, Summer Meadow, Highland Whistle, Ting-Sha Cymbal, Monastery Dawn, Aeolian Wind Harp.
             
-            ### ⏰ Voice Alarms & Customizable Disarm Challenges:
-            - **Alarm Acknowledgment Customizations** (Configurable in Profile Settings):
-              1. **Type Confirmation Only**: Type the target phrase to disarm.
-              2. **Voice Confirmation Only**: Speak into the mic ("I am awake") to verify.
-              3. **Both Required (Max Urgency)**: Type phrase AND speak voice confirmation.
-              4. **Neither (Standard 1-Tap)**: Instant 1-tap dismiss button.
-            - **1.5+ Minute Alarm Duration**: Alarms ring for at least 90s or continuously until turned off.
-            - **Alexa Voice Alarm Announcements**: Speaks custom spoken reminders when alarms trigger.
-            
-            ### 🔐 Authentication & UI:
-            - **Native Google One-Tap Account Picker**: In-app Google Play Services sign-in without external Chrome tabs.
-            - **Native Mobile UI**: Top App Bar, Segmented Controls, Bottom Action Sheets, and Floating Action Button.
+            ### 🎙️ Multi-Voice Persona Suite:
+            - Amazon Alexa (US English)
+            - Alexa British (UK English)
+            - Alexa Aussie (Australian English)
+            - Calm Morning Wake-Up
+            - Drill Sergeant Alarm Commander
             
             ### 📥 Download & Install:
-            Download `Stash-v2.0.0.apk` below and tap to install on your Android device.
-          files: output_apk/Stash-v2.0.0.apk
+            Download `Stash-v2.1.0.apk` below and tap to install on your Android device.
+          files: output_apk/Stash-v2.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
