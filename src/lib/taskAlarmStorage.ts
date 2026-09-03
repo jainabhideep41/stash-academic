@@ -1,4 +1,5 @@
 // Academic Task & Alarm Storage System
+import { AlarmTone } from "./alarmAudioEngine";
 
 export interface AcademicTask {
   id: string;
@@ -8,6 +9,7 @@ export interface AcademicTask {
   dueTime: string; // HH:MM (24h)
   priority: "low" | "medium" | "high" | "critical";
   category: "assignment" | "exam" | "lab" | "project" | "study" | "custom";
+  alarmTone?: AlarmTone; // Chosen phone ringtone sound
   challengeText: string; // The phrase the user MUST type to turn off the alarm
   status: "pending" | "snoozed" | "completed" | "dismissed";
   snoozeUntil?: number | null; // epoch ms
@@ -16,6 +18,7 @@ export interface AcademicTask {
 }
 
 const STORAGE_KEY = "stash_academic_tasks_v1";
+const DEFAULT_TONE_KEY = "stash_default_alarm_tone";
 
 // Helper to get formatted local date string YYYY-MM-DD
 export function getTodayDateString(offsetDays = 0): string {
@@ -40,6 +43,24 @@ export function getCurrentTimeString(offsetMinutes = 0): string {
   return `${hours}:${minutes}`;
 }
 
+export function getDefaultAlarmTone(): AlarmTone {
+  if (typeof window === "undefined") return "digital";
+  try {
+    const saved = localStorage.getItem(DEFAULT_TONE_KEY) as AlarmTone;
+    if (saved && ["digital", "radar", "siren", "gentle", "arcade"].includes(saved)) {
+      return saved;
+    }
+  } catch {}
+  return "digital";
+}
+
+export function setDefaultAlarmTone(tone: AlarmTone): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DEFAULT_TONE_KEY, tone);
+  } catch {}
+}
+
 // Sample default tasks to showcase when user first lands
 export const DEFAULT_TASKS: AcademicTask[] = [
   {
@@ -50,6 +71,7 @@ export const DEFAULT_TASKS: AcademicTask[] = [
     dueTime: "23:59",
     priority: "high",
     category: "assignment",
+    alarmTone: "radar",
     challengeText: "I acknowledge: Complete Algorithms DP Homework",
     status: "pending",
     createdAt: new Date().toISOString(),
@@ -62,6 +84,7 @@ export const DEFAULT_TASKS: AcademicTask[] = [
     dueTime: "17:00",
     priority: "critical",
     category: "lab",
+    alarmTone: "digital",
     challengeText: "I acknowledge: Submit FSD Lab 4 Report",
     status: "pending",
     createdAt: new Date().toISOString(),
@@ -74,6 +97,7 @@ export const DEFAULT_TASKS: AcademicTask[] = [
     dueTime: "14:30",
     priority: "medium",
     category: "project",
+    alarmTone: "gentle",
     challengeText: "I acknowledge: Finalize Database Schema",
     status: "pending",
     createdAt: new Date().toISOString(),
@@ -131,7 +155,7 @@ export function isTaskDue(task: AcademicTask): boolean {
     const targetDate = new Date(year, month - 1, day, hour, minute, 0, 0);
     const targetMs = targetDate.getTime();
 
-    // Trigger if within current minute window (now >= targetMs and not triggered recently in last 60s)
+    // Trigger if within current minute window
     if (now >= targetMs) {
       if (!task.lastTriggeredAt || now - task.lastTriggeredAt > 90000) {
         return true;

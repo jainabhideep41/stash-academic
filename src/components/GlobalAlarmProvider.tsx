@@ -65,7 +65,7 @@ export function GlobalAlarmProvider({
       const task: AcademicTask = e.detail;
       if (task) {
         setActiveAlarmTask(task);
-        alarmAudio.startAlarm();
+        alarmAudio.startAlarm(task.alarmTone || "digital");
       }
     };
 
@@ -91,9 +91,9 @@ export function GlobalAlarmProvider({
           saveTasks(updated);
           setTasks(updated);
 
-          // Trigger Ringing Alarm
+          // Trigger Ringing Alarm with task's chosen tone
           setActiveAlarmTask(t);
-          alarmAudio.startAlarm();
+          alarmAudio.startAlarm(t.alarmTone || "digital");
 
           // Native Web Notification
           if (

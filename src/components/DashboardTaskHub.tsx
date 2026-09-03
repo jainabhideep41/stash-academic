@@ -8,7 +8,14 @@ import {
   getTodayDateString,
   getCurrentTimeString,
   getTimeRemainingString,
+  getDefaultAlarmTone,
+  setDefaultAlarmTone,
 } from "@/lib/taskAlarmStorage";
+import {
+  alarmAudio,
+  AlarmTone,
+  ALARM_TONE_OPTIONS,
+} from "@/lib/alarmAudioEngine";
 import {
   Calendar,
   Clock,
@@ -22,7 +29,8 @@ import {
   X,
   Volume2,
   Lock,
-  Tag,
+  Play,
+  Music,
 } from "lucide-react";
 
 export function DashboardTaskHub() {
@@ -37,11 +45,13 @@ export function DashboardTaskHub() {
   const [dueTime, setDueTime] = useState(getCurrentTimeString(10));
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "critical">("high");
   const [category, setCategory] = useState<"assignment" | "exam" | "lab" | "project" | "study" | "custom">("assignment");
+  const [selectedTone, setSelectedTone] = useState<AlarmTone>("digital");
   const [customChallenge, setCustomChallenge] = useState("");
 
   // Load tasks on mount and sync on updates
   useEffect(() => {
     setTasks(loadTasks());
+    setSelectedTone(getDefaultAlarmTone());
 
     const handleUpdate = (e: any) => {
       if (e.detail) {
@@ -84,6 +94,7 @@ export function DashboardTaskHub() {
       dueTime,
       priority,
       category,
+      alarmTone: selectedTone,
       challengeText: customChallenge.trim() || `I acknowledge: ${title.trim()}`,
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -94,12 +105,21 @@ export function DashboardTaskHub() {
     saveTasks(updated);
     setTasks(updated);
 
+    // Save tone preference
+    setDefaultAlarmTone(selectedTone);
+
     // Reset form
     setTitle("");
     setDescription("");
     setDueDate(getTodayDateString(0));
     setDueTime(getCurrentTimeString(15));
     setIsCreateModalOpen(false);
+  };
+
+  // Preview tone burst
+  const handlePreviewTone = (tone: AlarmTone) => {
+    alarmAudio.unlockAudio();
+    alarmAudio.previewTone(tone);
   };
 
   // Trigger Immediate Test Alarm
@@ -112,6 +132,7 @@ export function DashboardTaskHub() {
       dueTime: getCurrentTimeString(0),
       priority: "critical",
       category: "custom",
+      alarmTone: selectedTone || "digital",
       challengeText: "I acknowledge: Wake up and focus on my studies",
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -197,6 +218,11 @@ export function DashboardTaskHub() {
       default:
         return "border-l-blue-500";
     }
+  };
+
+  const getToneIcon = (tone?: AlarmTone) => {
+    const match = ALARM_TONE_OPTIONS.find((opt) => opt.id === tone);
+    return match?.iconText || "📟";
   };
 
   return (
@@ -291,6 +317,10 @@ export function DashboardTaskHub() {
                       <span className="text-[9px] font-mono font-bold text-slate-400 uppercase bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
                         {t.category}
                       </span>
+                      <span className="text-[9px] font-mono font-bold text-purple-300 uppercase bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
+                        <span>{getToneIcon(t.alarmTone)}</span>
+                        <span>{t.alarmTone || "digital"}</span>
+                      </span>
                       <span className="text-[10px] font-mono text-slate-300 flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-md border border-white/5">
                         <Clock className="w-3 h-3 text-purple-400" />
                         {t.dueTime} &bull; {t.dueDate}
@@ -366,10 +396,11 @@ export function DashboardTaskHub() {
                       <button
                         type="button"
                         onClick={() => handleTriggerTestAlarm(t)}
-                        title="Test Alarm for this task"
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition cursor-pointer"
+                        title="Test Alarm with this task's ringtone"
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition cursor-pointer flex items-center gap-1"
                       >
                         <Volume2 className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold">Ring</span>
                       </button>
                       <button
                         type="button"
@@ -392,7 +423,7 @@ export function DashboardTaskHub() {
       {/* Modal: Add New Task & Alarm */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="fused-card border-prismatic rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 border border-white/20 shadow-2xl relative">
+          <div className="fused-card border-prismatic rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 border border-white/20 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -405,7 +436,7 @@ export function DashboardTaskHub() {
                     Create Task Alarm
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Phone wake-up alarm with anti-sleep typing challenge
+                    Phone wake-up alarm with anti-sleep typing challenge &amp; custom ringtones
                   </p>
                 </div>
               </div>
@@ -513,6 +544,60 @@ export function DashboardTaskHub() {
                     <option value="study">Study Session</option>
                     <option value="custom">Custom</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Alarm Tone / Ringtone Sound Selector */}
+              <div className="space-y-2 bg-purple-500/5 border border-purple-500/20 p-3.5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-bold text-purple-300 flex items-center gap-1.5">
+                    <Music className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Alarm Tone / Ringtone:</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Click ▶ to preview sound
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ALARM_TONE_OPTIONS.map((tone) => {
+                    const isSelected = selectedTone === tone.id;
+                    return (
+                      <div
+                        key={tone.id}
+                        onClick={() => setSelectedTone(tone.id)}
+                        className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600/20 border-purple-500 ring-1 ring-purple-500/40 text-white"
+                            : "bg-neutral-900/90 border-neutral-700 text-slate-300 hover:border-neutral-500"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <span className="text-base shrink-0">{tone.iconText}</span>
+                          <div className="overflow-hidden">
+                            <h5 className="font-bold text-xs truncate leading-tight">
+                              {tone.name}
+                            </h5>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              {tone.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreviewTone(tone.id);
+                          }}
+                          title={`Preview ${tone.name}`}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-purple-500 hover:text-white text-slate-300 transition shrink-0 ml-1 cursor-pointer"
+                        >
+                          <Play className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

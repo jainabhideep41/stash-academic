@@ -14,7 +14,6 @@ import {
   Calendar,
   Sparkles,
   AlertTriangle,
-  Snooze,
 } from "lucide-react";
 
 interface AlarmOverlayModalProps {
@@ -167,6 +166,10 @@ export function AlarmOverlayModal({
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-white/10 text-white border border-white/20">
               {task.category}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-purple-500/10 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+              <Volume2 className="w-2.5 h-2.5" />
+              {task.alarmTone ? `Tone: ${task.alarmTone}` : "Tone: Digital"}
             </span>
           </div>
 

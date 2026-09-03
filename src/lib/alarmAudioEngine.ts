@@ -1,11 +1,53 @@
 // Web Audio API Synthesizer Alarm Engine (Phone Wake-Up Style)
-// Generates loud, realistic multi-tone digital alarm beeps without relying on external MP3 assets
+// Generates multiple distinct realistic phone alarm ringtones without external MP3 assets
+
+export type AlarmTone = "digital" | "radar" | "siren" | "gentle" | "arcade";
+
+export interface ToneInfo {
+  id: AlarmTone;
+  name: string;
+  description: string;
+  iconText: string;
+}
+
+export const ALARM_TONE_OPTIONS: ToneInfo[] = [
+  {
+    id: "digital",
+    name: "Classic Digital Beep",
+    description: "Sharp 4-burst digital clock alarm",
+    iconText: "📟",
+  },
+  {
+    id: "radar",
+    name: "Radar Chimes",
+    description: "Modern phone radar pulse chime",
+    iconText: "📡",
+  },
+  {
+    id: "siren",
+    name: "Emergency Siren",
+    description: "Escalating high-urgency wake-up siren",
+    iconText: "🚨",
+  },
+  {
+    id: "gentle",
+    name: "Gentle Morning",
+    description: "Soft calming harmonic chime chord",
+    iconText: "🌅",
+  },
+  {
+    id: "arcade",
+    name: "8-Bit Arcade",
+    description: "Retro high-energy synth pulses",
+    iconText: "👾",
+  },
+];
 
 class AlarmAudioEngine {
   private audioCtx: AudioContext | null = null;
   private isPlaying: boolean = false;
   private intervalId: NodeJS.Timeout | number | null = null;
-  private gainNode: GainNode | null = null;
+  private currentTone: AlarmTone = "digital";
 
   // Initialize or resume AudioContext
   public unlockAudio(): void {
@@ -26,64 +68,178 @@ class AlarmAudioEngine {
     }
   }
 
-  // Play a single phone alarm beep pattern (e.g. 4 rapid high-frequency pulse bursts)
-  private playBeepBurst(): void {
+  // 1. Classic Digital Beep (4 rapid bursts)
+  private playDigitalBurst(): void {
     if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const freqs = [880, 880, 1046, 1174];
+    const burstDuration = 0.08;
+    const pauseDuration = 0.04;
 
-    try {
-      if (this.audioCtx.state === "suspended") {
-        this.audioCtx.resume();
-      }
+    freqs.forEach((freq, idx) => {
+      const startTime = now + idx * (burstDuration + pauseDuration);
+      const osc = this.audioCtx!.createOscillator();
+      const oscGain = this.audioCtx!.createGain();
 
-      const now = this.audioCtx.currentTime;
-      const masterGain = this.audioCtx.createGain();
-      masterGain.connect(this.audioCtx.destination);
-      masterGain.gain.setValueAtTime(0.75, now);
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, startTime);
 
-      // Beep sequence: 4 sharp bursts like standard digital phone alarm
-      const freqs = [880, 880, 1046, 1174]; // A5, A5, C6, D6
-      const burstDuration = 0.08;
-      const pauseDuration = 0.04;
+      oscGain.gain.setValueAtTime(0.001, startTime);
+      oscGain.gain.exponentialRampToValueAtTime(0.65, startTime + 0.01);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + burstDuration);
 
-      freqs.forEach((freq, idx) => {
-        const startTime = now + idx * (burstDuration + pauseDuration);
-        const osc = this.audioCtx!.createOscillator();
-        const oscGain = this.audioCtx!.createGain();
+      osc.connect(oscGain);
+      oscGain.connect(this.audioCtx!.destination);
 
-        osc.type = "sawtooth"; // Gives punchy, urgent digital alarm character
-        osc.frequency.setValueAtTime(freq, startTime);
+      osc.start(startTime);
+      osc.stop(startTime + burstDuration);
+    });
+  }
 
-        // Quick envelope
-        oscGain.gain.setValueAtTime(0.001, startTime);
-        oscGain.gain.exponentialRampToValueAtTime(0.6, startTime + 0.01);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + burstDuration);
+  // 2. Radar Chimes (Resonant marimba-style pings)
+  private playRadarBurst(): void {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const notes = [659.25, 880.0, 1318.51]; // E5, A5, E6
 
-        osc.connect(oscGain);
-        oscGain.connect(masterGain);
+    notes.forEach((freq, idx) => {
+      const startTime = now + idx * 0.12;
+      const osc = this.audioCtx!.createOscillator();
+      const oscGain = this.audioCtx!.createGain();
 
-        osc.start(startTime);
-        osc.stop(startTime + burstDuration);
-      });
-    } catch (e) {
-      console.warn("Error playing alarm burst:", e);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      oscGain.gain.setValueAtTime(0.001, startTime);
+      oscGain.gain.linearRampToValueAtTime(0.6, startTime + 0.015);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.audioCtx!.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.38);
+    });
+  }
+
+  // 3. Emergency Siren (Sweeping oscillating sirens)
+  private playSirenBurst(): void {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const osc = this.audioCtx.createOscillator();
+    const oscGain = this.audioCtx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(550, now);
+    osc.frequency.linearRampToValueAtTime(1100, now + 0.25);
+    osc.frequency.linearRampToValueAtTime(550, now + 0.5);
+
+    oscGain.gain.setValueAtTime(0.01, now);
+    oscGain.gain.linearRampToValueAtTime(0.7, now + 0.05);
+    oscGain.gain.linearRampToValueAtTime(0.7, now + 0.45);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.55);
+  }
+
+  // 4. Gentle Morning (Major 7th soft ambient chime)
+  private playGentleBurst(): void {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const notes = [440, 554.37, 659.25, 830.61]; // A major 7th chord (A4, C#5, E5, G#5)
+
+    notes.forEach((freq, idx) => {
+      const startTime = now + idx * 0.09;
+      const osc = this.audioCtx!.createOscillator();
+      const oscGain = this.audioCtx!.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      oscGain.gain.setValueAtTime(0.001, startTime);
+      oscGain.gain.linearRampToValueAtTime(0.45, startTime + 0.03);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.audioCtx!.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    });
+  }
+
+  // 5. 8-Bit Arcade (Energetic game wake-up)
+  private playArcadeBurst(): void {
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const freqs = [330, 440, 660, 880, 1320];
+
+    freqs.forEach((freq, idx) => {
+      const startTime = now + idx * 0.06;
+      const osc = this.audioCtx!.createOscillator();
+      const oscGain = this.audioCtx!.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      oscGain.gain.setValueAtTime(0.001, startTime);
+      oscGain.gain.linearRampToValueAtTime(0.4, startTime + 0.01);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.07);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.audioCtx!.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.08);
+    });
+  }
+
+  private playTonePattern(tone: AlarmTone): void {
+    switch (tone) {
+      case "radar":
+        this.playRadarBurst();
+        break;
+      case "siren":
+        this.playSirenBurst();
+        break;
+      case "gentle":
+        this.playGentleBurst();
+        break;
+      case "arcade":
+        this.playArcadeBurst();
+        break;
+      case "digital":
+      default:
+        this.playDigitalBurst();
+        break;
     }
   }
 
-  // Start continuous repeating phone alarm
-  public startAlarm(): void {
+  // Start repeating alarm with chosen tone
+  public startAlarm(tone: AlarmTone = "digital"): void {
     if (this.isPlaying) return;
     this.unlockAudio();
     this.isPlaying = true;
+    this.currentTone = tone;
 
-    // Immediately play first burst
-    this.playBeepBurst();
+    this.playTonePattern(this.currentTone);
 
-    // Repeat pattern every 850ms
+    const intervalMs = tone === "siren" ? 700 : tone === "gentle" ? 950 : 850;
     this.intervalId = setInterval(() => {
       if (this.isPlaying) {
-        this.playBeepBurst();
+        this.playTonePattern(this.currentTone);
       }
-    }, 850);
+    }, intervalMs);
+  }
+
+  // Preview a single burst of a chosen tone without continuous loop
+  public previewTone(tone: AlarmTone): void {
+    this.unlockAudio();
+    this.playTonePattern(tone);
   }
 
   // Stop / Turn off alarm
@@ -95,7 +251,7 @@ class AlarmAudioEngine {
     }
   }
 
-  // Play celebration / success chime when user successfully solves the typing challenge
+  // Play celebration / success chime when user solves the typing challenge
   public playSuccessChime(): void {
     this.unlockAudio();
     if (!this.audioCtx) return;
@@ -105,7 +261,7 @@ class AlarmAudioEngine {
         this.audioCtx.resume();
       }
       const now = this.audioCtx.currentTime;
-      const freqs = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6 major chord arpeggio
+      const freqs = [523.25, 659.25, 783.99, 1046.5];
       freqs.forEach((freq, i) => {
         const osc = this.audioCtx!.createOscillator();
         const gain = this.audioCtx!.createGain();
