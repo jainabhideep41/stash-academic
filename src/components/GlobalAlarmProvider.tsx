@@ -8,6 +8,7 @@ import {
   isTaskDue,
 } from "@/lib/taskAlarmStorage";
 import { alarmAudio } from "@/lib/alarmAudioEngine";
+import { NativeAlarmBridge } from "@/lib/nativeAlarmBridge";
 import { AlarmOverlayModal } from "./AlarmOverlayModal";
 
 export function GlobalAlarmProvider({
@@ -20,9 +21,12 @@ export function GlobalAlarmProvider({
     null
   );
 
-  // Load initial tasks
+  // Load initial tasks & request native permissions
   useEffect(() => {
     setTasks(loadTasks());
+
+    // Request native alarm and notification permissions
+    NativeAlarmBridge.requestPermissions();
 
     const handleTasksUpdate = (e: any) => {
       if (e.detail) {
@@ -123,6 +127,9 @@ export function GlobalAlarmProvider({
     (taskId: string, completed = true) => {
       alarmAudio.stopAlarm();
       setActiveAlarmTask(null);
+
+      // Cancel native alarm
+      NativeAlarmBridge.cancelTaskAlarm(taskId);
 
       const currentTasks = loadTasks();
       const updated = currentTasks.map((t) =>

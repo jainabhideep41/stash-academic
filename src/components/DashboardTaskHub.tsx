@@ -16,6 +16,7 @@ import {
   AlarmTone,
   ALARM_TONE_OPTIONS,
 } from "@/lib/alarmAudioEngine";
+import { NativeAlarmBridge } from "@/lib/nativeAlarmBridge";
 import {
   Calendar,
   Clock,
@@ -105,6 +106,9 @@ export function DashboardTaskHub() {
     saveTasks(updated);
     setTasks(updated);
 
+    // Schedule native exact alarm for Android/iOS with DND bypass
+    NativeAlarmBridge.scheduleTaskAlarm(newTask);
+
     // Save tone preference
     setDefaultAlarmTone(selectedTone);
 
@@ -157,6 +161,7 @@ export function DashboardTaskHub() {
     );
     saveTasks(updated);
     setTasks(updated);
+    NativeAlarmBridge.cancelTaskAlarm(id);
   };
 
   // Delete Task
@@ -165,6 +170,7 @@ export function DashboardTaskHub() {
     const updated = currentTasks.filter((t) => t.id !== id);
     saveTasks(updated);
     setTasks(updated);
+    NativeAlarmBridge.cancelTaskAlarm(id);
   };
 
   // Quick Snooze +5 mins

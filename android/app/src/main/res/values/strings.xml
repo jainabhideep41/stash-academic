@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stash Academic</string>
+    <string name="title_activity_main">Stash Academic</string>
+    <string name="package_name">com.stash.academic</string>
+    <string name="custom_url_scheme">com.stash.academic</string>
+</resources>
