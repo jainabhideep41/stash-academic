@@ -17,11 +17,20 @@ import {
   ArrowRight,
   Shield,
   Layers,
+  Volume2,
+  Mic,
+  Music,
+  AlarmClock,
 } from "lucide-react";
+import { alarmAudio, ALARM_TONE_OPTIONS } from "@/lib/alarmAudioEngine";
+import { voiceAssistant } from "@/lib/voiceAssistantEngine";
+import { HapticEngine } from "@/lib/hapticEngine";
 
 export function AppleKeynoteShowcase() {
-  const [activeTab, setActiveTab] = useState<"vault" | "notes" | "architecture">("vault");
+  const [activeTab, setActiveTab] = useState<"vault" | "notes" | "alarms" | "architecture">("alarms");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [playingTone, setPlayingTone] = useState<string | null>(null);
+  const [isSpeakingPreview, setIsSpeakingPreview] = useState(false);
   const [typedFormula, setTypedFormula] = useState(
     "\\sum_{k=1}^{n} k^2 = \\frac{n(n+1)(2n+1)}{6}"
   );
@@ -30,6 +39,27 @@ export function AppleKeynoteShowcase() {
     navigator.clipboard.writeText("https://stash-academic.vercel.app/vault/share/algorithms-pro-pack");
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handlePreviewTone = (toneId: string) => {
+    if (playingTone === toneId) {
+      alarmAudio.stopAlarm();
+      setPlayingTone(null);
+    } else {
+      HapticEngine.trigger("selection");
+      alarmAudio.startAlarm(toneId, 8);
+      setPlayingTone(toneId);
+    }
+  };
+
+  const handleTestAlexa = () => {
+    HapticEngine.trigger("medium");
+    setIsSpeakingPreview(true);
+    voiceAssistant.speakAlexaVoice(
+      "Hello! Welcome to Stash Academic Portal. I am your Alexa voice assistant. I can announce your wake-up alarms and guide your studies.",
+      () => setIsSpeakingPreview(true),
+      () => setIsSpeakingPreview(false)
+    );
   };
 
   return (
@@ -50,7 +80,7 @@ export function AppleKeynoteShowcase() {
             Power in every pixel. <span className="text-holographic">Pure precision.</span>
           </h2>
           <p className="text-slate-400 text-lg sm:text-xl font-normal leading-relaxed">
-            The simplicity of Apple design fused with iridescent micro-accents and edge cloud performance.
+            The simplicity of Apple design fused with Alexa voice intelligence, 60+ alarm sounds, and edge performance.
           </p>
         </div>
 
@@ -69,12 +99,23 @@ export function AppleKeynoteShowcase() {
             </div>
 
             {/* Apple Segmented Switcher */}
-            <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs">
+            <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs overflow-x-auto">
+              <button
+                onClick={() => setActiveTab("alarms")}
+                className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  activeTab === "alarms"
+                    ? "bg-white text-black shadow-md font-bold"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Voice &amp; 60+ Alarms</span>
+              </button>
               <button
                 onClick={() => setActiveTab("vault")}
-                className={`px-3.5 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "vault"
-                    ? "bg-white text-black shadow-md"
+                    ? "bg-white text-black shadow-md font-bold"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -83,20 +124,20 @@ export function AppleKeynoteShowcase() {
               </button>
               <button
                 onClick={() => setActiveTab("notes")}
-                className={`px-3.5 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "notes"
-                    ? "bg-white text-black shadow-md"
+                    ? "bg-white text-black shadow-md font-bold"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Notes & Math</span>
+                <span>Notes &amp; Math</span>
               </button>
               <button
                 onClick={() => setActiveTab("architecture")}
-                className={`px-3.5 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   activeTab === "architecture"
-                    ? "bg-white text-black shadow-md"
+                    ? "bg-white text-black shadow-md font-bold"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -114,6 +155,92 @@ export function AppleKeynoteShowcase() {
           {/* Interactive Window Body */}
           <div className="p-6 sm:p-10 min-h-[380px] flex flex-col justify-center">
             
+            {/* Tab: Voice & 60+ Alarms Showcase (NEW) */}
+            {activeTab === "alarms" && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                      <span>Alexa Voice &amp; 60+ Alarm Sounds</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold">
+                        v2.1.0 Feature
+                      </span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+                      Test Samsung, Xiaomi, and emergency sirens right in your browser with zero latency.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleTestAlexa}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-500 text-white font-semibold text-xs transition hover:opacity-90 active:scale-95 cursor-pointer shadow-md"
+                    >
+                      <Mic className="w-3.5 h-3.5 text-white animate-pulse" />
+                      <span>{isSpeakingPreview ? "Alexa Speaking..." : "Test Alexa Voice"}</span>
+                    </button>
+                    <button
+                      onClick={() => window.dispatchEvent(new CustomEvent("stash_open_voice_assistant"))}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black font-semibold text-xs transition hover:bg-slate-200 active:scale-95 cursor-pointer shadow-md"
+                    >
+                      <span>Open Voice Assistant &rarr;</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popular Sound Previews */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {[
+                    { id: "samsung_horizon", name: "Samsung Horizon", icon: "🌌", category: "Samsung" },
+                    { id: "xiaomi_fireflies", name: "Xiaomi Fireflies", icon: "✨", category: "Xiaomi" },
+                    { id: "ios_radar", name: "Apple Radar", icon: "📡", category: "Apple" },
+                    { id: "nuclear_siren", name: "Nuclear Siren", icon: "☢️", category: "Extreme" },
+                    { id: "air_horn", name: "Air Horn", icon: "📢", category: "Extreme" },
+                    { id: "church_bells", name: "Westminster Big Ben", icon: "🕰️", category: "Melodic" },
+                  ].map((s) => {
+                    const isPlaying = playingTone === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handlePreviewTone(s.id)}
+                        className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between gap-2 active:scale-95 cursor-pointer ${
+                          isPlaying
+                            ? "bg-purple-500/20 border-purple-500 ring-2 ring-purple-500/40"
+                            : "bg-black/60 hover:bg-black/80 border-white/10 hover:border-purple-500/40"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl">{s.icon}</span>
+                          <Volume2 className={`w-3.5 h-3.5 ${isPlaying ? "text-purple-400 animate-pulse" : "text-neutral-500"}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white leading-tight truncate">{s.name}</p>
+                          <span className="text-[10px] font-mono text-purple-400 uppercase font-bold">{s.category}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Info Badges */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-slate-300">1.5+ Min DND Wake-Up Alarms</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="text-slate-300">Spoken Task Reminders by Alexa</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                    <span className="text-slate-300">Type &amp; Voice Disarm Verification</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tab 1: Interactive Vault */}
             {activeTab === "vault" && (
               <div className="space-y-6 animate-in fade-in duration-300">
@@ -198,126 +325,47 @@ export function AppleKeynoteShowcase() {
                     <label className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-300">
                       Live High-Fidelity Rendering
                     </label>
-                    <div className="bg-black/80 border border-white/10 rounded-2xl p-5 min-h-[120px] flex flex-col justify-center space-y-3">
-                      <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold">
-                        Calculus & Discrete Mathematics
-                      </span>
-                      <div className="text-base sm:text-lg font-mono text-white bg-purple-500/10 p-4 rounded-xl border border-purple-500/20 overflow-x-auto">
+                    <div className="w-full bg-slate-950/80 border border-white/10 rounded-2xl p-4 flex items-center justify-center min-h-[120px]">
+                      <span className="font-mono text-base text-yellow-300">
                         {typedFormula}
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        Rendered with KaTeX engine & typography optimized for high-density displays.
-                      </p>
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Tab 3: Edge Engine Architecture */}
+            {/* Tab 3: Architecture & Security */}
             {activeTab === "architecture" && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-                  <div className="bg-black/60 border border-white/10 hover:border-cyan-500/40 p-6 rounded-2xl space-y-2 transition">
-                    <div className="text-3xl sm:text-4xl font-black text-white font-display">
-                      &lt; 20ms
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                      <Zap className="w-4 h-4" />
                     </div>
-                    <div className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
-                      Edge Network Latency
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      Global CDN distribution with zero routing bottlenecks.
-                    </p>
+                    <h4 className="text-sm font-bold text-white">Edge Accelerated</h4>
+                    <p className="text-xs text-slate-400">Global low-latency delivery on Next.js Turbopack.</p>
                   </div>
 
-                  <div className="bg-black/60 border border-white/10 hover:border-purple-500/40 p-6 rounded-2xl space-y-2 transition">
-                    <div className="text-3xl sm:text-4xl font-black text-white font-display">
-                      AES-256
+                  <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-2">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                      <Shield className="w-4 h-4" />
                     </div>
-                    <div className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
-                      Hardware Encryption
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      All uploaded materials and database records fully encrypted at rest.
-                    </p>
+                    <h4 className="text-sm font-bold text-white">Encrypted Storage</h4>
+                    <p className="text-xs text-slate-400">OWASP MASVS Hardened with TLS 1.3 encryption.</p>
                   </div>
 
-                  <div className="bg-black/60 border border-white/10 hover:border-rose-500/40 p-6 rounded-2xl space-y-2 transition">
-                    <div className="text-3xl sm:text-4xl font-black text-white font-display">
-                      100%
+                  <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                      <Globe className="w-4 h-4" />
                     </div>
-                    <div className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider">
-                      Cloud Availability
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      Serverless database synchronization operates 24/7 without PC reliance.
-                    </p>
+                    <h4 className="text-sm font-bold text-white">Cross-Platform Sync</h4>
+                    <p className="text-xs text-slate-400">Seamless synchronization between Android and Web.</p>
                   </div>
                 </div>
               </div>
             )}
 
-          </div>
-        </div>
-
-        {/* Fused Bento Grid with Radiant Micro-Accents */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          <div className="fused-card rounded-3xl p-8 flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Zap className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-mono uppercase tracking-widest text-cyan-400">Speed</span>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
-                Near-telepathic response times.
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Engineered on Next.js 15 App Router and Vercel edge runtime for lightning-quick page transitions and instantaneous search filtering.
-              </p>
-            </div>
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono text-slate-400">
-              <span>Next.js 15 Engine</span>
-              <span className="text-cyan-400 font-bold">&rarr;</span>
-            </div>
-          </div>
-
-          <div className="fused-card rounded-3xl p-8 flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                <Lock className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-mono uppercase tracking-widest text-purple-400">Authentication</span>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
-                Single Sign-On. Simple as a tap.
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Connect seamlessly with your Google Student account or GitHub developer profile. No passwords to remember or reset.
-              </p>
-            </div>
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono text-slate-400">
-              <span>NextAuth v5 & SSO</span>
-              <span className="text-purple-400 font-bold">&rarr;</span>
-            </div>
-          </div>
-
-          <div className="fused-card rounded-3xl p-8 flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                <Database className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-mono uppercase tracking-widest text-rose-400">Reliability</span>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
-                Cloud Sync. Works everywhere.
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Your notes, files, and course materials are stored remotely 24/7 on Supabase & PostgreSQL. Available on phone, tablet, or desktop.
-              </p>
-            </div>
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono text-slate-400">
-              <span>Prisma & Supabase</span>
-              <span className="text-rose-400 font-bold">&rarr;</span>
-            </div>
           </div>
 
         </div>

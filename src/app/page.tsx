@@ -3,6 +3,7 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GitHubSignInButton } from "@/components/GitHubSignInButton";
 import { UserAccountNav } from "@/components/UserAccountNav";
 import { AppleKeynoteShowcase } from "@/components/AppleKeynoteShowcase";
+import { VoiceAssistantOverlay } from "@/components/VoiceAssistantOverlay";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,10 +12,16 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
-  UserCheck,
+  Smartphone,
+  Download,
+  Mic,
+  Volume2,
+  AlarmClock,
+  Music,
 } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { CURRENT_APP_VERSION, GITHUB_RELEASES_URL } from "@/lib/appVersion";
 
 export default async function HomePage() {
   const session = await auth();
@@ -38,6 +45,8 @@ export default async function HomePage() {
 
     isRegistered = isRegisteredCookie || (dbUser?.isRegistered === true);
   }
+
+  const APK_DIRECT_URL = `https://github.com/jainabhideep41/stash-academic/releases/download/v${CURRENT_APP_VERSION}/Stash-v${CURRENT_APP_VERSION}.apk`;
 
   return (
     <div className="min-h-screen bg-[#02040a] text-[#f5f5f7] flex flex-col justify-between selection:bg-white selection:text-black relative overflow-x-hidden">
@@ -65,15 +74,27 @@ export default async function HomePage() {
 
           <nav className="hidden md:flex items-center gap-8 text-xs font-medium text-slate-400">
             <a href="#showcase" className="hover:text-white transition">Overview</a>
-            <a href="#showcase" className="hover:text-white transition">Vault</a>
-            <a href="#showcase" className="hover:text-white transition">Notes & Math</a>
-            <a href="#showcase" className="hover:text-cyan-400 transition flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-cyan-400" />
-              Specs
+            <a href="#alarms" className="hover:text-white transition flex items-center gap-1">
+              <Volume2 className="w-3.5 h-3.5 text-purple-400" />
+              <span>60+ Sounds</span>
+            </a>
+            <a href="#android" className="hover:text-cyan-400 transition flex items-center gap-1">
+              <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Android APK</span>
             </a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Direct Android APK Download Button in Navbar */}
+            <a
+              href={APK_DIRECT_URL}
+              download
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-200 text-xs font-mono font-bold transition shadow-sm active:scale-95"
+            >
+              <Download className="w-3.5 h-3.5 text-purple-300" />
+              <span>Get APK v{CURRENT_APP_VERSION}</span>
+            </a>
+
             {session?.user ? (
               <div className="flex items-center gap-3">
                 <Link
@@ -97,16 +118,16 @@ export default async function HomePage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 flex-grow space-y-28 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 flex-grow space-y-24 relative z-10">
         
         {/* Apple Cinematic Hero Section with Goddess Shimmer */}
         <div className="text-center max-w-4xl mx-auto space-y-8">
           
           {/* Top Pill Announcement */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-purple-500/30 text-xs font-medium text-purple-200 backdrop-blur-xl shadow-sm">
-            <span className="text-slate-400">Introducing Stash 2.0</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-            <span className="text-white font-semibold">The Academic Vault &rarr;</span>
+            <span className="text-slate-400">Stash v{CURRENT_APP_VERSION} Live</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-white font-semibold">60+ Alarm Sounds &amp; Alexa Voice Assistant &rarr;</span>
           </div>
 
           {/* Giant Apple Headline with Holographic Word */}
@@ -116,29 +137,126 @@ export default async function HomePage() {
 
           {/* Subheadline */}
           <p className="text-lg sm:text-2xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-            The academic workspace engineered for high performers. Course slides, Markdown notes, LaTeX equations, and instant peer sharing. All in one place.
+            The academic workspace engineered for high performers. Course vaults, Markdown notes, LaTeX equations, Alexa voice assistant, and 60+ Samsung &amp; Xiaomi alarm ringtones.
           </p>
 
           {/* Action CTA Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="#signin-card"
+              href={session?.user ? (isRegistered ? "/dashboard" : "/onboarding") : "#signin-card"}
               className="px-8 py-4 rounded-full bg-white text-black font-semibold text-sm transition hover:bg-slate-200 active:scale-95 shadow-2xl shadow-white/10 flex items-center gap-2 group cursor-pointer"
             >
               <span>Launch Your Vault</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition text-black" />
             </a>
+
             <a
-              href="#showcase"
-              className="px-8 py-4 rounded-full bg-slate-900/90 border border-white/10 text-white font-semibold text-sm transition hover:bg-slate-800 active:scale-95 flex items-center gap-2 cursor-pointer"
+              href={APK_DIRECT_URL}
+              download
+              className="px-8 py-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-sm transition active:scale-95 flex items-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer"
             >
-              <span>Explore Interactive Demo</span>
+              <Smartphone className="w-4 h-4 text-white" />
+              <span>Download Android APK (v{CURRENT_APP_VERSION})</span>
             </a>
           </div>
         </div>
 
-        {/* Apple Keynote Interactive Window Showcase & Fused Bento Grid */}
+        {/* Apple Keynote Interactive Window Showcase */}
         <AppleKeynoteShowcase />
+
+        {/* Dedicated Features Grid: Voice Assistant & 60+ Sounds */}
+        <div id="alarms" className="space-y-6">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <h2 className="text-3xl sm:text-4xl font-black text-white font-display">
+              Voice Intelligence &amp; 60+ Alarm Sounds
+            </h2>
+            <p className="text-sm text-slate-400">
+              Never sleep through a deadline again with our multimodal hardware wake-up suite.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Feature 1 */}
+            <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-4 border border-purple-500/20">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                <Mic className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white font-display">
+                Alexa-Style Voice Assistant
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-mono">
+                Powered by Google Gemini AI with 5 distinct vocal personas (US, UK, Aussie, Calm, Drill Commander). Alexa announces your scheduled tasks aloud.
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-4 border border-cyan-500/20">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
+                <Volume2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white font-display">
+                60+ Authentic Ringtones
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-mono">
+                100% offline Web Audio synthesizers: Samsung Horizon, Xiaomi Fireflies, Apple Radar, Nuclear Siren, Heavy Air Horn, Big Ben, and Tibetan Singing Bowls.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="fused-card rounded-3xl p-6 sm:p-8 space-y-4 border border-rose-500/20">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-300">
+                <AlarmClock className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white font-display">
+                Customizable Disarm Challenges
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-mono">
+                Configure whether turning off alarms requires typing a confirmation phrase, voice recognition confirmation ("I am awake"), both, or standard 1-tap.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Dedicated Android App Download Banner Section */}
+        <div id="android" className="fused-card border-prismatic rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden space-y-6">
+          <div className="w-14 h-14 rounded-3xl bg-white flex items-center justify-center mx-auto text-black shadow-xl shadow-white/10">
+            <Smartphone className="w-7 h-7 text-black" />
+          </div>
+
+          <div className="space-y-2 max-w-2xl mx-auto">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-purple-300 uppercase px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30">
+              ANDROID APK v{CURRENT_APP_VERSION}
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black text-white font-display tracking-tight mt-2">
+              Install Stash on Your Phone
+            </h2>
+            <p className="text-sm text-slate-300">
+              Get hardware DND bypass alarms, native Google One-Tap authentication, 60+ synthesized ringtones, and offline study notes.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <a
+              href={APK_DIRECT_URL}
+              download
+              className="px-8 py-4 rounded-full bg-white text-black font-black text-sm transition hover:bg-slate-200 active:scale-95 shadow-2xl flex items-center gap-2 cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-black" />
+              <span>Download Stash-v{CURRENT_APP_VERSION}.apk (5.14 MB)</span>
+            </a>
+
+            <a
+              href={GITHUB_RELEASES_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="px-8 py-4 rounded-full bg-slate-900/90 border border-white/10 text-white font-semibold text-sm transition hover:bg-slate-800 active:scale-95 flex items-center gap-2"
+            >
+              <span>GitHub Release Notes &rarr;</span>
+            </a>
+          </div>
+        </div>
 
         {/* Student SSO Login Section */}
         <div id="signin-card" className="max-w-xl mx-auto scroll-mt-24">
@@ -222,6 +340,9 @@ export default async function HomePage() {
 
       </main>
 
+      {/* Mount Voice Assistant Overlay Globally on Website */}
+      <VoiceAssistantOverlay />
+
       {/* Fused Minimalist Footer */}
       <footer className="border-t border-white/10 bg-[#02040a] py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 text-xs text-slate-500">
@@ -235,7 +356,7 @@ export default async function HomePage() {
             </div>
             <div className="flex items-center gap-2 font-mono text-[11px]">
               <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-              <span>ALL SYSTEMS OPERATIONAL</span>
+              <span>ALL SYSTEMS OPERATIONAL (v{CURRENT_APP_VERSION})</span>
             </div>
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">

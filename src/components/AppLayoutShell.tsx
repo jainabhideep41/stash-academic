@@ -280,7 +280,16 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
               <span className="text-white font-bold">{getPageTitle()}</span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <a
+                href={`https://github.com/jainabhideep41/stash-academic/releases/download/v${CURRENT_APP_VERSION}/Stash-v${CURRENT_APP_VERSION}.apk`}
+                download
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-200 text-xs font-mono font-bold transition cursor-pointer"
+                title="Download Android APK"
+              >
+                <span>📱 Download APK</span>
+              </a>
+
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("stash_open_voice_assistant"))}
