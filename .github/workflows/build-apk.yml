@@ -1,4 +1,4 @@
-name: Build & Release Android APK (Native App Experience)
+name: Build & Release Android APK (Native App Architecture)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build Native Android APK (Haptics, TabBar & Back Navigation)
+    name: Build Native Mobile Android APK (Bottom TabBar & Sheet Modals)
     runs-on: ubuntu-latest
 
     steps:
@@ -49,36 +49,36 @@ jobs:
       - name: 📦 Prepare APK Release Binary
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.2.0-Native.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Stash-Academic-v1.3.0-Mobile.apk
 
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Stash-Academic-v1.2.0-Native-APK
-          path: output_apk/Stash-Academic-v1.2.0-Native.apk
+          name: Stash-Academic-v1.3.0-Mobile-APK
+          path: output_apk/Stash-Academic-v1.3.0-Mobile.apk
           if-no-files-found: error
 
-      - name: 🚀 Publish GitHub Release v1.2.0-native
+      - name: 🚀 Publish GitHub Release v1.3.0-mobile-ui
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.0-native
-          name: "Stash Academic Mobile v1.2.0 (True Native App Experience)"
+          tag_name: v1.3.0-mobile-ui
+          name: "Stash Academic Mobile v1.3.0 (Native Mobile UI Redesign)"
           body: |
-            ## 📱 Stash Academic Mobile v1.2.0 (True Native App Experience)
+            ## 📱 Stash Academic Mobile v1.3.0 (Native App UI Architecture)
             
-            Eliminates all browser/website behaviors and delivers a genuine native app feel!
+            Redesigned specifically to match the mobile UX patterns of tier-1 mobile apps (Linear, Things 3, Notion Mobile).
             
-            ### 🚀 What's New in v1.2.0:
-            - **📱 Native Mobile Bottom Tab Bar**: Replaces web drawers with an app-native bottom navigation bar (Dashboard, Assessment, Vault, Notes, Profile).
-            - **📳 Native Micro-Haptics Engine**: Tactile vibration feedback on button presses, tab switches, alarm dismissals, and snooze.
-            - **🔙 Native Android Hardware Back Button Handling**: Closes modals, navigates tabs smoothly, prevents accidental exits with double-tap exit verification, and keeps alarms ringing until solved.
-            - **✨ Zero Web Rubber-Banding & Bounce**: Blocked browser pull-to-refresh, removed tap highlight flashes, and locked zoom.
-            - **🕶️ Immersive Dark Status Bar & Splash Screen**: Seamless full-screen AMOLED black integration.
-            - **🛡️ OWASP MASVS App Store Security**: `allowBackup="false"`, strict TLS 1.3 pinning, and AES-GCM encrypted storage.
+            ### 🎨 Native UI & Mobile Architecture:
+            - **📱 Dedicated Mobile Top App Bar**: Fixed AMOLED black header with avatar status, title, and quick update pill.
+            - **🗂️ Segmented Control Task Filters**: Instant tab switching between `Active`, `Today`, `Done`, and `All`.
+            - **📑 Native Mobile Bottom Action Sheet**: Create Task and Alarm modals slide up from the bottom with iOS grabber handles.
+            - **➕ Floating Action Button (FAB)**: 1-thumb touch creation floating above the bottom tab bar.
+            - **📳 Micro-Haptics on Every Interaction**: Tactile feedback on checkbox toggles, tab switches, alarm actions, and button presses.
+            - **🛡️ Hardware DND Bypass & Silent Mode Alarm**: Rings at full volume with mandatory anti-sleep acknowledgment.
             
             ### 📥 Download & Install:
-            Download `Stash-Academic-v1.2.0-Native.apk` below, tap to install on your phone.
-          files: output_apk/Stash-Academic-v1.2.0-Native.apk
+            Download `Stash-Academic-v1.3.0-Mobile.apk` below, tap to install on your Android device.
+          files: output_apk/Stash-Academic-v1.3.0-Mobile.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

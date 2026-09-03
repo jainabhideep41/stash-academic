@@ -22,134 +22,89 @@ import {
   Calendar,
   Clock,
   Plus,
-  Bell,
   AlarmClock,
   CheckCircle2,
   Trash2,
-  AlertTriangle,
-  Sparkles,
   X,
   Volume2,
-  Lock,
-  Play,
-  Music,
 } from "lucide-react";
 
 export function DashboardTaskHub() {
   const [tasks, setTasks] = useState<AcademicTask[]>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "today" | "completed">("all");
+  const [filter, setFilter] = useState<"pending" | "completed" | "today" | "all">("pending");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // New task form state
+  // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState(getTodayDateString(0));
-  const [dueTime, setDueTime] = useState(getCurrentTimeString(10));
-  const [priority, setPriority] = useState<"low" | "medium" | "high" | "critical">("high");
-  const [category, setCategory] = useState<"assignment" | "exam" | "lab" | "project" | "study" | "custom">("assignment");
-  const [selectedTone, setSelectedTone] = useState<AlarmTone>("digital");
-  const [customChallenge, setCustomChallenge] = useState("");
+  const [dueTime, setDueTime] = useState("08:00");
+  const [category, setCategory] = useState<AcademicTask["category"]>("assignment");
+  const [priority, setPriority] = useState<AcademicTask["priority"]>("high");
+  const [alarmTone, setAlarmTone] = useState<AlarmTone>("digital");
+  const [challengeText, setChallengeText] = useState("");
+  const [previewPlaying, setPreviewPlaying] = useState<AlarmTone | null>(null);
 
-  // Load tasks on mount and sync on updates
+  // Load saved tasks on initial mount
   useEffect(() => {
-    setTasks(loadTasks());
-    setSelectedTone(getDefaultAlarmTone());
+    const loaded = loadTasks();
+    setTasks(loaded);
+    setAlarmTone(getDefaultAlarmTone());
+  }, []);
 
-    const handleUpdate = (e: any) => {
-      if (e.detail) {
-        setTasks(e.detail);
-      } else {
-        setTasks(loadTasks());
-      }
-    };
+  // Set default due time 1 hour ahead
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      setDueTime(getCurrentTimeString(60));
+    }
+  }, [isCreateModalOpen]);
 
-    window.addEventListener("stash_tasks_updated", handleUpdate);
-    const interval = setInterval(() => {
-      setTasks(loadTasks());
-    }, 10000);
-
+  // Audio preview cleaner
+  useEffect(() => {
     return () => {
-      window.removeEventListener("stash_tasks_updated", handleUpdate);
-      clearInterval(interval);
+      alarmAudio.stopAlarm();
     };
   }, []);
 
-  // Update auto challenge text when title changes
-  useEffect(() => {
-    if (title.trim()) {
-      setCustomChallenge(`I acknowledge: ${title.trim()}`);
-    } else {
-      setCustomChallenge("");
-    }
-  }, [title]);
-
-  // Handle Add Task
+  // Handle Create Task
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
+    HapticEngine.trigger("success");
+
     const newTask: AcademicTask = {
-      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: "task_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
       title: title.trim(),
       description: description.trim() || undefined,
       dueDate,
       dueTime,
-      priority,
       category,
-      alarmTone: selectedTone,
-      challengeText: customChallenge.trim() || `I acknowledge: ${title.trim()}`,
+      priority,
       status: "pending",
+      alarmTone,
+      challengeText: challengeText.trim() || `I acknowledge: ${title.trim()}`,
       createdAt: new Date().toISOString(),
     };
 
-    const currentTasks = loadTasks();
-    const updated = [newTask, ...currentTasks];
+    const updated = [newTask, ...tasks];
     saveTasks(updated);
     setTasks(updated);
+    setDefaultAlarmTone(alarmTone);
 
-    // Schedule native exact alarm for Android/iOS with DND bypass
+    // Schedule exact native Android alarm with DND bypass
     NativeAlarmBridge.scheduleTaskAlarm(newTask);
 
-    // Save tone preference
-    setDefaultAlarmTone(selectedTone);
-
-    // Reset form
+    // Reset Form
     setTitle("");
     setDescription("");
-    setDueDate(getTodayDateString(0));
-    setDueTime(getCurrentTimeString(15));
+    setChallengeText("");
     setIsCreateModalOpen(false);
-  };
-
-  // Preview tone burst
-  const handlePreviewTone = (tone: AlarmTone) => {
-    alarmAudio.unlockAudio();
-    alarmAudio.previewTone(tone);
-  };
-
-  // Trigger Immediate Test Alarm
-  const handleTriggerTestAlarm = (taskToTest?: AcademicTask) => {
-    const task: AcademicTask = taskToTest || {
-      id: "test-preview-alarm",
-      title: "Test Alarm: Wake Up & Complete Task",
-      description: "This is a live test of the phone wake-up alarm sound, screen pulse, and typing acknowledgment challenge.",
-      dueDate: getTodayDateString(0),
-      dueTime: getCurrentTimeString(0),
-      priority: "critical",
-      category: "custom",
-      alarmTone: selectedTone || "digital",
-      challengeText: "I acknowledge: Wake up and focus on my studies",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-
-    window.dispatchEvent(
-      new CustomEvent("stash_trigger_alarm", { detail: task })
-    );
   };
 
   // Toggle Task Status (Completed / Pending)
   const handleToggleStatus = (id: string) => {
+    HapticEngine.trigger("light");
     const currentTasks = loadTasks();
     const updated = currentTasks.map((t) =>
       t.id === id
@@ -167,6 +122,7 @@ export function DashboardTaskHub() {
 
   // Delete Task
   const handleDeleteTask = (id: string) => {
+    HapticEngine.trigger("warning");
     const currentTasks = loadTasks();
     const updated = currentTasks.filter((t) => t.id !== id);
     saveTasks(updated);
@@ -174,22 +130,40 @@ export function DashboardTaskHub() {
     NativeAlarmBridge.cancelTaskAlarm(id);
   };
 
-  // Quick Snooze +5 mins
-  const handleQuickSnooze = (id: string) => {
-    const currentTasks = loadTasks();
-    const snoozeUntil = Date.now() + 5 * 60 * 1000;
-    const updated = currentTasks.map((t) =>
-      t.id === id
-        ? {
-            ...t,
-            status: "snoozed" as const,
-            snoozeUntil,
-            lastTriggeredAt: null,
-          }
-        : t
+  // Trigger Instant Test Alarm
+  const handleTriggerTestAlarm = (customTask?: AcademicTask) => {
+    HapticEngine.trigger("heavy");
+    const testTask: AcademicTask = customTask || {
+      id: "test_" + Date.now(),
+      title: "URGENT: Submit Database Assignment 3",
+      description: "Immediate submission deadline before midnight lock.",
+      dueDate: getTodayDateString(0),
+      dueTime: "23:59",
+      category: "assignment",
+      priority: "critical",
+      status: "pending",
+      alarmTone: alarmTone,
+      challengeText: "I am awake and working on Database Assignment 3",
+      createdAt: new Date().toISOString(),
+    };
+
+    window.dispatchEvent(
+      new CustomEvent("stash_trigger_alarm", {
+        detail: { task: testTask },
+      })
     );
-    saveTasks(updated);
-    setTasks(updated);
+  };
+
+  // Preview Tone in Form
+  const handleTogglePreviewTone = (tone: AlarmTone) => {
+    if (previewPlaying === tone) {
+      alarmAudio.stopAlarm();
+      setPreviewPlaying(null);
+    } else {
+      HapticEngine.trigger("selection");
+      alarmAudio.startAlarm(tone);
+      setPreviewPlaying(tone);
+    }
   };
 
   // Filter tasks
@@ -204,26 +178,13 @@ export function DashboardTaskHub() {
   const getPriorityBadgeClass = (p: string) => {
     switch (p) {
       case "critical":
-        return "border-rose-500/40 bg-rose-500/10 text-rose-300";
+        return "border-rose-500/40 bg-rose-500/15 text-rose-300";
       case "high":
-        return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+        return "border-amber-500/40 bg-amber-500/15 text-amber-300";
       case "medium":
-        return "border-purple-500/40 bg-purple-500/10 text-purple-300";
+        return "border-purple-500/40 bg-purple-500/15 text-purple-300";
       default:
-        return "border-blue-500/40 bg-blue-500/10 text-blue-300";
-    }
-  };
-
-  const getBorderColor = (p: string) => {
-    switch (p) {
-      case "critical":
-        return "border-l-rose-500";
-      case "high":
-        return "border-l-amber-500";
-      case "medium":
-        return "border-l-purple-500";
-      default:
-        return "border-l-blue-500";
+        return "border-blue-500/40 bg-blue-500/15 text-blue-300";
     }
   };
 
@@ -232,218 +193,254 @@ export function DashboardTaskHub() {
     return match?.iconText || "📟";
   };
 
+  const activeCount = tasks.filter((t) => t.status === "pending" || t.status === "snoozed").length;
+  const todayCount = tasks.filter((t) => t.dueDate === todayStr).length;
+  const completedCount = tasks.filter((t) => t.status === "completed").length;
+
   return (
     <div className="space-y-4">
       
-      {/* Header Bar */}
+      {/* Native App Screen Header & Action Row */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2 font-display">
-          <Calendar className="w-5 h-5 text-white" />
-          Academic Tasks &amp; Alarms
-        </h2>
+        <div>
+          <h2 className="text-xl font-black text-white flex items-center gap-2 font-display">
+            <span>Academic Tasks &amp; Alarms</span>
+          </h2>
+          <p className="text-[11px] font-mono text-neutral-400">
+            {activeCount} Active &bull; Bypass DND Hardware Alarms
+          </p>
+        </div>
         
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => handleTriggerTestAlarm()}
             title="Test Phone Wake-Up Alarm Screen & Sound"
-            className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
-            <Bell className="w-3.5 h-3.5 text-rose-400 animate-bounce" />
-            <span>Test Alarm</span>
+            <AlarmClock className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+            <span className="hidden sm:inline">Test Ring</span>
+            <span className="sm:hidden">Test</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-sm"
+            onClick={() => {
+              HapticEngine.trigger("light");
+              setIsCreateModalOpen(true);
+            }}
+            className="hidden md:flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-bold transition shadow-md active:scale-95 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-black" />
-            <span>New Task</span>
+            <Plus className="w-4 h-4 text-black" />
+            <span>Add Task</span>
           </button>
         </div>
       </div>
 
-      {/* Main Task List Card */}
-      <div className="fused-card rounded-2xl p-5 space-y-4">
-        
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 pb-1 border-b border-white/10 overflow-x-auto text-[11px] font-mono">
-          {(["all", "pending", "today", "completed"] as const).map((tab) => (
+      {/* iOS / Material 3 Style Segmented Control Filter Bar */}
+      <div className="p-1 rounded-2xl bg-neutral-900/90 border border-neutral-800 flex items-center justify-between text-xs font-mono font-bold">
+        {[
+          { key: "pending", label: "Active", count: activeCount },
+          { key: "today", label: "Today", count: todayCount },
+          { key: "completed", label: "Done", count: completedCount },
+          { key: "all", label: "All", count: tasks.length },
+        ].map((tab) => {
+          const isActive = filter === tab.key;
+          return (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1 rounded-lg capitalize transition cursor-pointer font-bold ${
-                filter === tab
-                  ? "bg-white/15 text-white border border-white/20"
-                  : "text-slate-400 hover:text-white"
+              key={tab.key}
+              onClick={() => {
+                HapticEngine.trigger("selection");
+                setFilter(tab.key as any);
+              }}
+              className={`flex-1 py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer ${
+                isActive
+                  ? "bg-white text-black shadow-md font-black"
+                  : "text-neutral-400 hover:text-white"
               }`}
             >
-              {tab === "all" ? `All (${tasks.length})` : tab}
+              <span>{tab.label}</span>
+              <span className={`ml-1 text-[10px] ${isActive ? "text-neutral-700" : "text-neutral-500"}`}>
+                ({tab.count})
+              </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </div>
 
-        {/* Task Items */}
+      {/* Grouped Inset Task List */}
+      <div className="space-y-2.5">
         {filteredTasks.length === 0 ? (
-          <div className="text-center py-8 space-y-2">
-            <AlarmClock className="w-8 h-8 text-slate-500 mx-auto" />
-            <p className="text-xs text-slate-300 font-medium">No tasks found</p>
-            <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-              Schedule an assignment deadline or study session with loud wake-up alarm reminders.
-            </p>
+          <div className="p-8 rounded-3xl bg-neutral-900/40 border border-neutral-800/80 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 mx-auto flex items-center justify-center text-purple-400">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">No tasks found</p>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                {filter === "completed"
+                  ? "Completed tasks will show up here."
+                  : "Tap the + button to schedule your first academic alarm."}
+              </p>
+            </div>
             <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="mt-2 text-xs font-mono text-purple-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              type="button"
+              onClick={() => {
+                HapticEngine.trigger("light");
+                setIsCreateModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-slate-200 transition shadow-md active:scale-95 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" /> Add your first task
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Task Alarm</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredTasks.map((t) => {
-              const isCompleted = t.status === "completed";
-              const timeString = getTimeRemainingString(t);
+          filteredTasks.map((t) => {
+            const isCompleted = t.status === "completed";
+            const timeString = getTimeRemainingString(t);
 
-              return (
-                <div
-                  key={t.id}
-                  className={`border-l-4 ${getBorderColor(
-                    t.priority
-                  )} bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3.5 space-y-2 transition group`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
+            return (
+              <div
+                key={t.id}
+                className={`p-4 rounded-2xl border transition-all active:scale-[0.99] ${
+                  isCompleted
+                    ? "bg-neutral-950/40 border-neutral-900 opacity-60"
+                    : "bg-neutral-900/60 hover:bg-neutral-900 border-neutral-800 shadow-sm"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  
+                  {/* Native Touch Checkbox */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(t.id)}
+                    className="mt-0.5 shrink-0 text-neutral-400 hover:text-white transition cursor-pointer"
+                  >
+                    {isCompleted ? (
+                      <div className="w-5 h-5 rounded-lg bg-emerald-500 flex items-center justify-center text-black shadow-sm">
+                        <CheckCircle2 className="w-4 h-4 text-black" />
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-lg border-2 border-neutral-600 hover:border-purple-400 transition" />
+                    )}
+                  </button>
+
+                  {/* Task Content */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border ${getPriorityBadgeClass(
+                            t.priority
+                          )}`}
+                        >
+                          {t.priority}
+                        </span>
+                        <span className="text-[9px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 flex items-center gap-1">
+                          <span>{getToneIcon(t.alarmTone)}</span>
+                          <span>{t.alarmTone || "digital"}</span>
+                        </span>
+                      </div>
+
                       <span
-                        className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border ${getPriorityBadgeClass(
-                          t.priority
-                        )}`}
+                        className={`text-[10px] font-mono font-bold shrink-0 ${
+                          isCompleted
+                            ? "text-emerald-400"
+                            : t.status === "snoozed"
+                            ? "text-amber-400 animate-pulse"
+                            : "text-purple-300"
+                        }`}
                       >
-                        {t.priority}
-                      </span>
-                      <span className="text-[9px] font-mono font-bold text-slate-400 uppercase bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                        {t.category}
-                      </span>
-                      <span className="text-[9px] font-mono font-bold text-purple-300 uppercase bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/30 flex items-center gap-1">
-                        <span>{getToneIcon(t.alarmTone)}</span>
-                        <span>{t.alarmTone || "digital"}</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-300 flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-md border border-white/5">
-                        <Clock className="w-3 h-3 text-purple-400" />
-                        {t.dueTime} &bull; {t.dueDate}
+                        {timeString}
                       </span>
                     </div>
 
-                    <span
-                      className={`text-[10px] font-mono font-bold shrink-0 ${
-                        isCompleted
-                          ? "text-emerald-400"
-                          : t.status === "snoozed"
-                          ? "text-amber-400 animate-pulse"
-                          : "text-purple-300"
-                      }`}
-                    >
-                      {timeString}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h4
-                      className={`text-sm font-bold leading-snug transition ${
-                        isCompleted
-                          ? "text-slate-500 line-through"
-                          : "text-white group-hover:text-purple-200"
-                      }`}
-                    >
-                      {t.title}
-                    </h4>
-                    {t.description && (
-                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
-                        {t.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Anti-Sleep typing challenge note */}
-                  <div className="pt-1 text-[10px] font-mono text-slate-400 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-rose-400 shrink-0" />
-                    <span className="truncate">Challenge: &ldquo;{t.challengeText}&rdquo;</span>
-                  </div>
-
-                  {/* Task Card Action Footer */}
-                  <div className="pt-2 flex items-center justify-between border-t border-white/5 text-xs font-mono">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(t.id)}
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer ${
-                          isCompleted
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                            : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                    <div>
+                      <h4
+                        className={`text-sm font-bold leading-snug ${
+                          isCompleted ? "text-neutral-500 line-through" : "text-white"
                         }`}
                       >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>{isCompleted ? "Completed" : "Mark Done"}</span>
-                      </button>
-
-                      {!isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSnooze(t.id)}
-                          title="Snooze for 5 minutes"
-                          className="px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
-                        >
-                          <AlarmClock className="w-3 h-3 text-amber-400" />
-                          <span>+5m Snooze</span>
-                        </button>
+                        {t.title}
+                      </h4>
+                      {t.description && (
+                        <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2 leading-relaxed">
+                          {t.description}
+                        </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleTriggerTestAlarm(t)}
-                        title="Test Alarm with this task's ringtone"
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition cursor-pointer flex items-center gap-1"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold">Ring</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTask(t.id)}
-                        title="Delete Task"
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    {/* Metadata & Actions */}
+                    <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
+                        <Clock className="w-3 h-3 text-neutral-500" />
+                        <span>{t.dueTime} &bull; {t.dueDate}</span>
+                      </div>
 
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleTriggerTestAlarm(t)}
+                          title="Ring this task alarm"
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-slate-300 hover:text-white text-[10px] font-mono font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <Volume2 className="w-3 h-3 text-rose-400" />
+                          <span>Ring</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTask(t.id)}
+                          title="Delete task"
+                          className="p-1 rounded-lg text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Modal: Add New Task & Alarm */}
+      {/* Floating Action Button (FAB) on Mobile screens (< md) */}
+      <button
+        type="button"
+        onClick={() => {
+          HapticEngine.trigger("medium");
+          setIsCreateModalOpen(true);
+        }}
+        className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-[0_8px_30px_rgba(168,85,247,0.5)] active:scale-90 transition-transform cursor-pointer"
+        title="Create New Academic Task Alarm"
+      >
+        <Plus className="w-7 h-7 text-white stroke-[2.5]" />
+      </button>
+
+      {/* Mobile Bottom Action Sheet & Desktop Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="fused-card border-prismatic rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 border border-white/20 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-neutral-950 border-t md:border border-neutral-800 rounded-t-3xl md:rounded-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl space-y-5 animate-in slide-in-from-bottom duration-300">
             
+            {/* Mobile Sheet Grabber Handle */}
+            <div className="w-12 h-1.5 rounded-full bg-neutral-700 mx-auto -mt-2 mb-2 md:hidden" />
+
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
                   <AlarmClock className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white font-display">
-                    Create Task Alarm
+                    Schedule Task Alarm
                   </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Phone wake-up alarm with anti-sleep typing challenge &amp; custom ringtones
+                  <p className="text-[11px] font-mono text-neutral-400">
+                    Bypasses phone silent/DND with mandatory acknowledgment
                   </p>
                 </div>
               </div>
@@ -454,7 +451,7 @@ export function DashboardTaskHub() {
                   HapticEngine.trigger("light");
                   setIsCreateModalOpen(false);
                 }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-neutral-900 text-neutral-400 hover:text-white transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -463,188 +460,171 @@ export function DashboardTaskHub() {
             {/* Creation Form */}
             <form onSubmit={handleCreateTask} className="space-y-4">
               
-              {/* Event / Task Title */}
+              {/* Task Title */}
               <div className="space-y-1">
-                <label className="text-xs font-mono font-bold text-slate-300 block">
-                  Event / Task Title *
+                <label className="text-xs font-mono font-bold text-neutral-300 block">
+                  Task Title *
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Operating Systems Lab 4 Submission"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Algorithms Homework 4 / Midterm Revision"
-                  className="w-full py-2.5 px-3.5 rounded-xl bg-neutral-900 border border-neutral-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-white text-xs placeholder-slate-500 focus:outline-none transition"
+                  className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-purple-500 transition"
                 />
               </div>
 
-              {/* Description */}
+              {/* Task Description */}
               <div className="space-y-1">
-                <label className="text-xs font-mono font-bold text-slate-300 block">
-                  Description / Context (Optional)
+                <label className="text-xs font-mono font-bold text-neutral-300 block">
+                  Description / Study Goal (Optional)
                 </label>
                 <textarea
                   rows={2}
+                  placeholder="Include submission portal links, rubric checks, or team reminder notes."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Notes, topics, or instructions to remember when the alarm rings..."
-                  className="w-full py-2 px-3.5 rounded-xl bg-neutral-900 border border-neutral-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-white text-xs placeholder-slate-500 focus:outline-none transition resize-none"
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 text-xs focus:outline-none focus:border-purple-500 transition resize-none"
                 />
               </div>
 
-              {/* Date & Time Grid */}
+              {/* Date & Time Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-mono font-bold text-slate-300 block">
-                    Alarm Date *
+                  <label className="text-xs font-mono font-bold text-neutral-300 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-purple-400" />
+                    Due Date
                   </label>
                   <input
                     type="date"
                     required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full py-2 px-3 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-mono font-bold text-slate-300 block">
-                    Alarm Time (24h) *
+                  <label className="text-xs font-mono font-bold text-neutral-300 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-purple-400" />
+                    Alarm Time (24h)
                   </label>
                   <input
                     type="time"
                     required
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    className="w-full py-2 px-3 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition"
                   />
                 </div>
               </div>
 
-              {/* Priority & Category Grid */}
+              {/* Priority & Category */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-mono font-bold text-slate-300 block">
+                  <label className="text-xs font-mono font-bold text-neutral-300 block">
                     Priority
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full py-2 px-3 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition"
                   >
-                    <option value="critical">Critical (Loudest)</option>
-                    <option value="high">High Urgency</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
+                    <option value="critical">🚨 Critical / Exam</option>
+                    <option value="high">🔥 High Priority</option>
+                    <option value="medium">⚡ Medium</option>
+                    <option value="low">☕ Low / Routine</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-mono font-bold text-slate-300 block">
+                  <label className="text-xs font-mono font-bold text-neutral-300 block">
                     Category
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full py-2 px-3 rounded-xl bg-neutral-900 border border-neutral-700 text-white text-xs font-mono focus:border-purple-500 focus:outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white text-xs font-mono focus:outline-none focus:border-purple-500 transition"
                   >
-                    <option value="assignment">Assignment</option>
-                    <option value="lab">Lab Assessment</option>
-                    <option value="exam">Exam / Quiz</option>
-                    <option value="project">Project Work</option>
-                    <option value="study">Study Session</option>
-                    <option value="custom">Custom</option>
+                    <option value="assignment">📝 Assignment</option>
+                    <option value="exam">🎓 Exam / Test</option>
+                    <option value="study">📚 Study Session</option>
+                    <option value="project">💻 Project Lab</option>
+                    <option value="custom">⏰ General Wake-Up</option>
                   </select>
                 </div>
               </div>
 
-              {/* Alarm Tone / Ringtone Sound Selector */}
-              <div className="space-y-2 bg-purple-500/5 border border-purple-500/20 p-3.5 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono font-bold text-purple-300 flex items-center gap-1.5">
-                    <Music className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Alarm Tone / Ringtone:</span>
-                  </label>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    Click ▶ to preview sound
-                  </span>
-                </div>
+              {/* Alarm Tone Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
+                  <span>Custom Alarm Ringtone</span>
+                  <span className="text-[10px] text-purple-400 font-normal">Tap to preview sound</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALARM_TONE_OPTIONS.map((opt) => {
+                    const isSelected = alarmTone === opt.id;
+                    const isPlaying = previewPlaying === opt.id;
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {ALARM_TONE_OPTIONS.map((tone) => {
-                    const isSelected = selectedTone === tone.id;
                     return (
-                      <div
-                        key={tone.id}
-                        onClick={() => setSelectedTone(tone.id)}
-                        className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
+                      <button
+                        type="button"
+                        key={opt.id}
+                        onClick={() => {
+                          setAlarmTone(opt.id);
+                          handleTogglePreviewTone(opt.id);
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
                           isSelected
-                            ? "bg-purple-600/20 border-purple-500 ring-1 ring-purple-500/40 text-white"
-                            : "bg-neutral-900/90 border-neutral-700 text-slate-300 hover:border-neutral-500"
+                            ? "bg-purple-500/15 border-purple-500 text-white shadow-sm"
+                            : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-white"
                         }`}
                       >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="text-base shrink-0">{tone.iconText}</span>
-                          <div className="overflow-hidden">
-                            <h5 className="font-bold text-xs truncate leading-tight">
-                              {tone.name}
-                            </h5>
-                            <p className="text-[10px] text-slate-400 truncate">
-                              {tone.description}
-                            </p>
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-base">{opt.iconText}</span>
+                          <div className="truncate">
+                            <p className="text-xs font-bold truncate leading-tight">{opt.name}</p>
+                            <p className="text-[10px] font-mono text-neutral-500 truncate">{opt.description}</p>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePreviewTone(tone.id);
-                          }}
-                          title={`Preview ${tone.name}`}
-                          className="p-1.5 rounded-lg bg-white/10 hover:bg-purple-500 hover:text-white text-slate-300 transition shrink-0 ml-1 cursor-pointer"
-                        >
-                          <Play className="w-3 h-3" />
-                        </button>
-                      </div>
+                        <Volume2 className={`w-3.5 h-3.5 shrink-0 ${isPlaying ? "text-purple-400 animate-pulse" : "text-neutral-600"}`} />
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Anti-Sleep Typing Challenge Preview */}
-              <div className="space-y-1.5 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl">
-                <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-rose-300">
-                  <Lock className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Mandatory Typing Challenge to Turn Off:</span>
-                </div>
+              {/* Anti-Sleep Typing Challenge */}
+              <div className="space-y-1">
+                <label className="text-xs font-mono font-bold text-neutral-300 flex items-center justify-between">
+                  <span>Anti-Sleep Typing Challenge</span>
+                  <span className="text-[10px] text-neutral-500 font-normal">Mandatory to turn off alarm</span>
+                </label>
                 <input
                   type="text"
-                  value={customChallenge}
-                  onChange={(e) => setCustomChallenge(e.target.value)}
-                  placeholder="Phrase user must type to silence the alarm..."
-                  className="w-full py-1.5 px-2.5 rounded-lg bg-black/60 border border-neutral-700 text-yellow-300 text-xs font-mono focus:border-rose-500 focus:outline-none"
+                  placeholder={`Default: I acknowledge: ${title || "this task"}`}
+                  value={challengeText}
+                  onChange={(e) => setChallengeText(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 text-xs focus:outline-none focus:border-purple-500 transition"
                 />
-                <p className="text-[10px] text-slate-400">
-                  The alarm stays ringing until you type this exact phrase when it fires.
-                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-3">
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-slate-300 text-xs font-bold transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white text-xs font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="py-2.5 px-5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-black transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-black text-xs font-black transition shadow-lg active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <Bell className="w-3.5 h-3.5 text-black" />
-                  <span>Save Task Alarm</span>
+                  <AlarmClock className="w-4 h-4 text-black" />
+                  <span>Set Task Alarm</span>
                 </button>
               </div>
 

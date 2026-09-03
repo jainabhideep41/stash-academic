@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -11,8 +11,6 @@ import {
   UploadCloud,
   LogOut,
   Plus,
-  Menu,
-  X,
   ChevronRight,
   UserCircle,
   Sparkles,
@@ -22,6 +20,7 @@ import { AppUpdateModal } from "./AppUpdateModal";
 import { NativeMobileTabBar } from "./NativeMobileTabBar";
 import { CURRENT_APP_VERSION } from "@/lib/appVersion";
 import { NativeMobileEngine } from "@/lib/nativeMobileEngine";
+import { HapticEngine } from "@/lib/hapticEngine";
 
 interface AppLayoutShellProps {
   children: React.ReactNode;
@@ -34,7 +33,6 @@ interface AppLayoutShellProps {
 
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Initialize native status bar, splash screen, and hardware back button
   React.useEffect(() => {
@@ -71,50 +69,74 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 
   const getPageTitle = () => {
     if (pathname === "/dashboard") return "Dashboard";
-    if (pathname === "/assessment") return "Assessment Studio & Synthesis";
-    if (pathname === "/vault") return "File Vault & Sharing";
-    if (pathname === "/notes") return "Notes & Study Guides";
-    if (pathname === "/profile") return "Student Profile & Credentials";
-    return "Workspace";
+    if (pathname === "/assessment") return "Assessment Studio";
+    if (pathname === "/vault") return "File Vault";
+    if (pathname === "/notes") return "Notes Hub";
+    if (pathname === "/profile") return "Profile & Settings";
+    return "Stash";
   };
 
   return (
     <GlobalAlarmProvider>
       <div className="min-h-screen bg-black text-white flex flex-col md:flex-row selection:bg-white selection:text-black">
         
-        {/* Mobile Top Header */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-neutral-950 border-b border-neutral-800 sticky top-0 z-50">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-              <FolderArchive className="w-4 h-4 text-black" />
-            </div>
-            <span className="font-black text-base tracking-tight text-white font-display">
-              STASH
-            </span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/profile" className="p-1.5 rounded-lg bg-neutral-900 border border-neutral-800">
+        {/* Native Mobile App Bar (Fixed Top with AMOLED Blur & Safe Area Inset) */}
+        <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-black/85 backdrop-blur-xl border-b border-neutral-800/80 pt-[max(env(safe-area-inset-top),8px)] pb-3 px-4 shadow-lg flex items-center justify-between">
+          <Link
+            href="/profile"
+            onClick={() => HapticEngine.trigger("selection")}
+            className="flex items-center gap-2.5 active:scale-95 transition-transform"
+          >
+            <div className="relative">
               {user.image ? (
-                <img src={user.image} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+                <img
+                  src={user.image}
+                  alt={user.name || "Student"}
+                  className="w-8 h-8 rounded-full border border-neutral-700 object-cover"
+                />
               ) : (
-                <UserCircle className="w-6 h-6 text-slate-300" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-xs font-black text-white shadow-sm">
+                  {user.name?.charAt(0) || "S"}
+                </div>
               )}
-            </Link>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-black" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] font-mono text-neutral-400 leading-none">
+                Student Portal
+              </span>
+              <span className="text-xs font-bold text-white truncate max-w-[120px] leading-tight">
+                {user.name || "Student"}
+              </span>
+            </div>
+          </Link>
+
+          {/* Screen Title */}
+          <div className="text-center">
+            <h1 className="text-sm font-black text-white tracking-tight font-display">
+              {getPageTitle()}
+            </h1>
+          </div>
+
+          {/* Right Action Icons */}
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-neutral-400 hover:text-white"
+              type="button"
+              onClick={() => {
+                HapticEngine.trigger("light");
+                window.dispatchEvent(new CustomEvent("stash_check_updates"));
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-neutral-300 active:scale-95 transition text-[11px] font-mono font-bold"
+              title="App Version & Updates"
             >
-              {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>v{CURRENT_APP_VERSION}</span>
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Sidebar Navigation */}
-        <aside
-          className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-neutral-950 border-r border-neutral-800 flex flex-col justify-between p-4 transition-transform duration-200 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-          }`}
-        >
+        {/* Desktop Sidebar Navigation (Visible on md+ screens only) */}
+        <aside className="hidden md:flex flex-col justify-between w-64 bg-neutral-950 border-r border-neutral-800 p-4 shrink-0 min-h-screen sticky top-0">
           <div className="space-y-6">
             {/* App Logo Header */}
             <Link href="/dashboard" className="flex items-center gap-3 px-2 pt-2 group">
@@ -154,7 +176,6 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    onClick={() => setSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
                       isActive
                         ? "bg-neutral-900 text-white border border-neutral-700 shadow-sm"
@@ -225,7 +246,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
         {/* Main App Workspace Content */}
         <div className="flex-1 flex flex-col min-w-0 bg-black">
           
-          {/* Top Header Bar */}
+          {/* Desktop Top Header Bar */}
           <header className="hidden md:flex items-center justify-between h-16 px-8 border-b border-neutral-800 bg-black/90 backdrop-blur-md sticky top-0 z-30">
             <div className="flex items-center gap-2 text-xs font-mono">
               <span className="text-neutral-500">Stash</span>
@@ -275,8 +296,8 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
             </div>
           </header>
 
-          {/* Page Content Body */}
-          <main className="p-4 sm:p-6 lg:p-8 flex-1 pb-28 md:pb-8">{children}</main>
+          {/* Page Content Body (Top-padded on mobile for app bar, bottom-padded for bottom bar) */}
+          <main className="p-3 sm:p-6 lg:p-8 flex-1 pt-18 md:pt-6 pb-28 md:pb-8">{children}</main>
 
           {/* In-App Auto-Update Modal & Banners */}
           <AppUpdateModal />
